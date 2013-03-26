@@ -65,7 +65,7 @@ class Snoop(Thread):
     def get_ident_tables(self):
         """Return a list of tables that requrie identing - i.e. adding drone name and location"""
         return []
-#       return ['bluetooth']
+        #return ['bluetooth']
 
     def get_tables(self):
         return [self.table]
