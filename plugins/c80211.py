@@ -5,7 +5,7 @@ import collections
 import glob
 import logging
 import os
-import scapy
+from scapy.all import sniff, Dot11Elt, Dot11ProbeReq
 import time
 from threading import Thread
 
@@ -71,8 +71,8 @@ class Snoop(Thread):
 
         while self.STOP_SNIFFING == False:
             try:
-                scapy.sniff(store=0, iface=self.iface, prn=self.packeteer,
-                            stopperTimeout=1, stopper=self.stopperCheck)
+                sniff(store=0, iface=self.iface, prn=self.packeteer,
+                      stopperTimeout=1, stopper=self.stopperCheck)
             except Exception:
                 logging.exception(("Scapy exception whilst sniffing. "
                                    "Will back off for 10 seconds, "
@@ -86,8 +86,8 @@ class Snoop(Thread):
     def packeteer(self, p):
         # Give the packet to each module
 
-        if p.haslayer(scapy.Dot11ProbeReq):
-            ssid = p[scapy.Dot11Elt].info
+        if p.haslayer(Dot11ProbeReq):
+            ssid = p[Dot11Elt].info
             ssid = ssid.decode('utf-8', 'ignore')
 
             #mac = p.addr2
