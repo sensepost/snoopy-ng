@@ -11,83 +11,83 @@ import time
 """SSID and Prox session calculator. Using pylibpcap"""
 class snoop(Thread):
 
-	def __init__(self,*args):
-		Thread.__init__(self)
-		self.RUN=True
+    def __init__(self,*args):
+        Thread.__init__(self)
+        self.RUN=True
                 self.dict_device_ssids={}
 
-		self.iface=None
+        self.iface=None
                 if len(args)>0 and args[0] != None:
                         self.iface=args[0][0]
                 else:
                         logging.error("No interface specified!")
-			self.iface="NoInterfaceSelected"
-		self.p=None
+            self.iface="NoInterfaceSelected"
+        self.p=None
 
-		#Prox sess vars
-		self.MOST_RECENT_TIME=0
-		self.dict_current_proximity_sessions={}
-		self.q_closed_proximity_sessions=collections.deque()
-		self.DELTA_PROX=300                                     # Proximity session duration, before starting a new one
+        #Prox sess vars
+        self.MOST_RECENT_TIME=0
+        self.dict_current_proximity_sessions={}
+        self.q_closed_proximity_sessions=collections.deque()
+        self.DELTA_PROX=300                                     # Proximity session duration, before starting a new one
 
-	def run(self):
-		while self.RUN:
-			try:
-			        logging.debug("Starting pcapy WiFi module")
-				self.p=pcap.pcapObject()
-				self.p.open_live(self.iface, 1600, 0, 100)
-				if ( self.p.datalink() != dpkt.pcap.DLT_IEEE802_11_RADIO ):
-					logging.error("Selected interface '%s' is not in monitor mode. Will wait 10 seconds and try again."%self.iface)
-					time.sleep(10)
-				else:
-       	        			while self.RUN:
-						self.p.dispatch(1, self.process_packet)
-			except Exception,e:
-				logging.error("Error occured trying to monitor '%s': '%s'. Will wait 10 seconds and try again."%(self.iface,e))
-				time.sleep(10)	
+    def run(self):
+        while self.RUN:
+            try:
+                    logging.debug("Starting pcapy WiFi module")
+                self.p=pcap.pcapObject()
+                self.p.open_live(self.iface, 1600, 0, 100)
+                if ( self.p.datalink() != dpkt.pcap.DLT_IEEE802_11_RADIO ):
+                    logging.error("Selected interface '%s' is not in monitor mode. Will wait 10 seconds and try again."%self.iface)
+                    time.sleep(10)
+                else:
+                            while self.RUN:
+                        self.p.dispatch(1, self.process_packet)
+            except Exception,e:
+                logging.error("Error occured trying to monitor '%s': '%s'. Will wait 10 seconds and try again."%(self.iface,e))
+                time.sleep(10)  
 
-	@staticmethod
+    @staticmethod
         def get_parameter_list():
                 return ["<wifi_interface> - interface to listen on. (e.g. -m c80211_pycap:mon0)"] #TODO: ,"<proximity_delta> - time between observataions to group proximity sessions (e.g. -m:c80211:mon0,60"]
 
-	def stop(self):
-		self.RUN=False		
-		print "Stopping"
+    def stop(self):
+        self.RUN=False      
+        print "Stopping"
 
-	def process_packet(self,pktlen, rawdata, timestamp):
-		timestamp=int(timestamp)
-		if not rawdata:
-			return
-		try:		
-			tap = dpkt.radiotap.Radiotap(rawdata)
-			signal_ssi=-(256-tap.ant_sig.db)	 #Calculate signal strength
-			t_len=binascii.hexlify(rawdata[2:3])	 #t_len field indicates the entire length of the radiotap data, including the radiotap header.
-			t_len=int(t_len,16)			 #Convert to decimal
+    def process_packet(self,pktlen, rawdata, timestamp):
+        timestamp=int(timestamp)
+        if not rawdata:
+            return
+        try:        
+            tap = dpkt.radiotap.Radiotap(rawdata)
+            signal_ssi=-(256-tap.ant_sig.db)     #Calculate signal strength
+            t_len=binascii.hexlify(rawdata[2:3])     #t_len field indicates the entire length of the radiotap data, including the radiotap header.
+            t_len=int(t_len,16)          #Convert to decimal
 
-			# This fails with 1.5% of captures in testing. Cause: unknown.
-			wlan = dpkt.ieee80211.IEEE80211(rawdata[t_len:])
-			if wlan.type == 0 and wlan.subtype == 4: # Indicates a probe request
-				ssid = wlan.ies[0].info
-				ssid=ssid.decode('utf-8','ignore')	#Correct way to handle UTF?
-				mac=binascii.hexlify(wlan.mgmt.src)
-			
-				if ssid != "":
-					self.do_ssid(mac,ssid,timestamp)
-				self.do_prox(mac,timestamp)
+            # This fails with 1.5% of captures in testing. Cause: unknown.
+            wlan = dpkt.ieee80211.IEEE80211(rawdata[t_len:])
+            if wlan.type == 0 and wlan.subtype == 4: # Indicates a probe request
+                ssid = wlan.ies[0].info
+                ssid=ssid.decode('utf-8','ignore')  #Correct way to handle UTF?
+                mac=binascii.hexlify(wlan.mgmt.src)
+            
+                if ssid != "":
+                    self.do_ssid(mac,ssid,timestamp)
+                self.do_prox(mac,timestamp)
 
-		except:
-			pass
-#			print traceback.format_exc()
-			
-	
-	def do_ssid(self,mac,ssid,ts):	
-		if (mac,ssid) not in self.dict_device_ssids:
-			self.dict_device_ssids[(mac,ssid)]=0
+        except:
+            pass
+#           print traceback.format_exc()
+            
+    
+    def do_ssid(self,mac,ssid,ts):  
+        if (mac,ssid) not in self.dict_device_ssids:
+            self.dict_device_ssids[(mac,ssid)]=0
 
-	
-	def do_prox(self,mac,t):
-		self.MOST_RECENT_TIME=int(t)
-  		# New
+    
+    def do_prox(self,mac,t):
+        self.MOST_RECENT_TIME=int(t)
+        # New
                 if mac not in self.dict_current_proximity_sessions:
                         self.dict_current_proximity_sessions[mac]=[t,t,1,0]
                 else:   
@@ -115,7 +115,7 @@ class snoop(Thread):
                         )
 
 
-		table_prox=Table('proximity_sessions',metadata,
+        table_prox=Table('proximity_sessions',metadata,
                         Column('mac', String(12), primary_key=True),
                         Column('first_obs',Integer, primary_key=True),
                         Column('last_obs',Integer),
@@ -170,9 +170,9 @@ class snoop(Thread):
 
                         #return None
                         return ("proximity_sessions",tmp+tmp2)
-		return []
+        return []
 
-	
+    
 
         def get_ssid_data(self):
                 """Ensure data is returned in the form of a SQL row """
@@ -189,9 +189,9 @@ class snoop(Thread):
                                 mac,ssid=foo[0],foo[1]
                                 self.dict_device_ssids[(mac,ssid)]=1
                         return ("ssids",tmp)
-		return[]
-		
-	def get_data(self):
-		return [self.get_ssid_data() ,self.get_prox_data()]
+        return[]
+        
+    def get_data(self):
+        return [self.get_ssid_data() ,self.get_prox_data()]
 
 
