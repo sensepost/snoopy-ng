@@ -89,4 +89,5 @@ class Snarf():
                 mac = i['mac']
                 self.current_proximity_sessions[mac][3] = 1
 
-        return ("proximity_sessions", open_sess+closed_sess)
+        if len( open_sess + closed_sess ) > 0:
+            return ("proximity_sessions", open_sess+closed_sess)
