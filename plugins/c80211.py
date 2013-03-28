@@ -5,12 +5,13 @@ import collections
 import glob
 import logging
 import os
-from scapy.all import sniff, Dot11Elt, Dot11ProbeReq
 import time
 from threading import Thread
+import includes.monitor_mode as mm
 
-logging.basicConfig(level=logging.DEBUG,format='%(asctime)s %(levelname)s %(filename)s: %(message)s',datefmt='%Y-%m-%d %H:%M:%S')
 logging.getLogger("scapy.runtime").setLevel(logging.ERROR)
+from scapy.all import sniff, Dot11Elt, Dot11ProbeReq
+logging.basicConfig(level=logging.DEBUG,format='%(asctime)s %(levelname)s %(filename)s: %(message)s',datefmt='%Y-%m-%d %H:%M:%S')
 
 
 class Snoop(Thread):
@@ -22,10 +23,20 @@ class Snoop(Thread):
 
     def __init__(self, *args):
         self.iface = None
+        self.enable_monitor_mode = False
+        self.bfilter = ''
         if args and args[0] is not None:
-            self.iface = args[0][0]
-        else:
-            logging.error("No interface specified!")
+            try:
+                pargs=dict(a.split("=") for a in args[0])# for a in args[0][0].split(","))
+                if 'iface' in pargs:
+                    self.iface = pargs['iface']
+                if 'mon' in pargs and pargs['mon'].lower()=="true":
+                    self.enable_monitor_mode = True
+                if 'filter' in pargs:
+                    self.bfilter = pargs['filter']
+            except:
+                logging.error("Bad arguments passed to module")
+            #self.iface = args[0][0]
 
         Thread.__init__(self)
         self.STOP_SNIFFING = False
@@ -53,9 +64,10 @@ class Snoop(Thread):
     @staticmethod
     def get_parameter_list():
         #TODO: "<proximity_delta> - time between observataions to group proximity sessions (e.g. -m:c80211:mon0,60")
-        return ["<wifi_interface> - interface to listen on. (e.g. -m c80211:mon0)"]
+        return ["iface=<dev> - interface to listen on. (e.g. -m c80211:iface=wlan3)","mon=[True|False] - Enable monitor mode on <dev> (e.g. -m c80211:iface=wlan3,mon=True","filter=<bpf> - Filter to apply. (e.g. -mc c80211:filter='foobar'"]
 
-    def get_ident_tables(self):
+    @staticmethod
+    def get_ident_tables():
         """Return a list of tables that requrie identing - i.e. adding drone
             name and location."""
         return ['proximity_sessions']
@@ -64,14 +76,24 @@ class Snoop(Thread):
         self.STOP_SNIFFING = True
 
     def run(self):
-        if self.iface is None:
-            logging.error("No interface specified for '%s' module, cannot run" % __name__)
-        else:
-            logging.debug("Starting sniffer plugin on interface '%s'" % self.iface)
+        #if self.iface is None:
+        #    logging.error("No interface specified for '%s' module, cannot run" % __name__)
+        #else:
+        #    logging.debug("Starting sniffer plugin on interface '%s'" % self.iface)
+
+	if self.enable_monitor_mode:
+		self.iface=mm.enable_monitor_mode(self.iface)
+		if not self.iface:
+			logging.error("No suitable monitor interface available.")
+			self.STOP_SNIFFING = True
 
         while self.STOP_SNIFFING == False:
+            if not self.iface:
+                print "[W] Warning, no interface specified. Will sniff *all* interfaces."
+            else:
+                print "[+] Sniffing on interface '%s'"%self.iface
             try:
-                sniff(store=0, iface=self.iface, prn=self.packeteer,
+                sniff(store=0, iface=self.iface, prn=self.packeteer, filter=self.bfilter,
                       stopperTimeout=1, stopper=self.stopperCheck)
             except Exception:
                 logging.exception(("Scapy exception whilst sniffing. "
@@ -85,26 +107,8 @@ class Snoop(Thread):
 
     def packeteer(self, p):
         # Give the packet to each module
-
-        if p.haslayer(Dot11ProbeReq):
-            ssid = p[Dot11Elt].info
-            ssid = ssid.decode('utf-8', 'ignore')
-
-            #mac = p.addr2
-            #self.f1.write(mac + "\n")
-            #if ssid != '':
-            #    self.f2.write(ssid + "\n")
-
-            #self.f1.flush()
-            #self.f2.flush()
-
         for m in self.modules:
             m.proc_packet(p)
-
-        #newtime = int(time.time())
-        #if newtime - self.time >= self.DATA_WRITE_FREQ:
-        #    self.get_data()
-        #    self.time = newtime
 
     def get_data(self):
         data_to_return = []
@@ -119,4 +123,4 @@ class Snoop(Thread):
 
 if __name__ == "__main__":
     #with launch_ipdb_on_exception():
-    Snoop("mon0")
+    Snoop()

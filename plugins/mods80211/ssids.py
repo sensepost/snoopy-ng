@@ -3,10 +3,9 @@
 
 import logging
 import re
-from scapy.all import Dot11ProbeReq, Dot11Elt
 from sqlalchemy import MetaData, Table, Column, Integer, String, Unicode
-
 logging.getLogger("scapy.runtime").setLevel(logging.ERROR)
+from scapy.all import Dot11ProbeReq, Dot11Elt
 
 
 class Snarf():

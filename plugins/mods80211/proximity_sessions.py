@@ -4,10 +4,10 @@
 import collections
 import logging
 import re
-from scapy.all import Dot11ProbeReq
 from sqlalchemy import MetaData, Table, Column, String, Integer
 
 logging.getLogger("scapy.runtime").setLevel(logging.ERROR)
+from scapy.all import Dot11ProbeReq
 
 class Snarf():
     """Proximity session calculator"""

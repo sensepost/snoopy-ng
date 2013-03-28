@@ -17,7 +17,7 @@ from sqlalchemy import create_engine, MetaData, Column, String
 import string
 import random
 
-logging.basicConfig(level=logging.DEBUG,
+logging.basicConfig(level=logging.DEBUG, filename='snoopy.log',
                     format='%(asctime)s %(levelname)s %(filename)s: %(message)s',
                     datefmt='%Y-%m-%d %H:%M:%S')
 
@@ -41,8 +41,12 @@ class Snoopy():
                               for x in range(10))
         #Database
         self.tables = {}
-        self.db = create_engine(dbms)
-        self.metadata = MetaData(self.db)
+        try:
+            self.db = create_engine(dbms)
+            self.metadata = MetaData(self.db)
+        except:
+            print "[!] Badly formed dbms schema. See http://docs.sqlalchemy.org/en/rel_0_8/core/engines.html for examples of valid schema"
+            sys.exit(-1)
         self.ident_tables = []
 
         self._load_modules(moduleNames)
@@ -185,9 +189,11 @@ class Snoopy():
                 return True
             else:
                 reason = result['reason']
+                print "[E] Unable to upload data to '%s' - '%s'"% (self.server,reason)
                 logging.debug("Failed to upload data - '%s'"%reason)
                 return False
         except Exception, e:
+            print "[E] Unable to upload data to '%s' - '%s'"% (self.server,e)
             logging.debug("Exception whilst attempting to upload data:")
             logging.debug(e)
             return False
@@ -235,7 +241,7 @@ def main():
     group_s.add_option("-a", "--list_drones", dest="listdrones", action="store_true", help="List all drone accounts.")
 
     #Common options
-    parser.add_option("-b", "--database", dest="dbms", action="store", type="string", default="sqlite:///snoopy.db", help="Database to use, in SQL Alchemy format. [default: %default]")
+    parser.add_option("-b", "--dbms", dest="dbms", action="store", type="string", default="sqlite:///snoopy.db", help="Database to use, in SQL Alchemy format. [default: %default]")
     parser.add_option("-m", "--module", dest="module", action="append", help="Module to load. Pass parameters with colon. e.g '-m c80211:mon0,aggressive'. Use -i to list available modules and their paramters.")
     #parser.add_option("-p", "--parameters", dest="parameters", action="append", help="Optional module parameters, per module. Omit for default.")
     parser.add_option("-i", "--list", dest="list", action="store_true", help="List all available modules and exit.", default=False)
@@ -262,7 +268,7 @@ def main():
     if options.newdrone:
         print "[+] Creating new Snoopy server sync account"
         import includes.webserver
-        key = includes.webserver.webserver.manage_drone_account(options.newdrone,
+        key = includes.webserver.Webserver.manage_drone_account(options.newdrone,
                                                                 "create",
                                                                 options.dbms)
         print "[+] Key for '%s' is '%s'" % (options.newdrone, key)
@@ -274,14 +280,14 @@ def main():
     elif options.deldrone:
         import includes.webserver
         print "[+] Deleting drone account '%s'" % options.deldrone
-        includes.webserver.webserver.manage_drone_account(options.deldrone,
+        includes.webserver.Webserver.manage_drone_account(options.deldrone,
                                                           "delete",
                                                           options.dbms)
         sys.exit(0)
     elif options.listdrones:
         import includes.webserver
         print "[+] Available drone accounts:"
-        drones = includes.webserver.webserver.manage_drone_account(1, "list",
+        drones = includes.webserver.Webserver.manage_drone_account(1, "list",
                                                                    options.dbms)
         for d in drones:
             print "\t%s:%s" % (d[0], d[1])
@@ -327,7 +333,7 @@ def main():
                "Listening on port '%d' with sync web path '%s'") % \
               (options.server_port, options.server_path)
         import includes.webserver
-        includes.webserver.webserver(options.dbms,
+        includes.webserver.Webserver(options.dbms,
                                      options.server_path, options.server_port)
     #print str(options)
 

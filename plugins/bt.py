@@ -19,13 +19,6 @@ class Snoop(Thread):
         self.devices = {}
         self.RUN = True
 
-        """Make sure to define your table here"""
-        metadata = MetaData()
-        self.table = Table('bluetooth',metadata,
-                           Column('mac', String(12), primary_key=True),
-                           Column('name', Unicode, primary_key=True),
-                           Column('sunc', Integer, default=0))
-
     def run(self):
         logging.debug("Starting bluetooth module")
         while self.RUN:
@@ -62,13 +55,23 @@ class Snoop(Thread):
             return [("bluetooth", tmp)]
         return []
 
-    def get_ident_tables(self):
+    @staticmethod
+    def get_ident_tables():
         """Return a list of tables that requrie identing - i.e. adding drone name and location"""
         return []
         #return ['bluetooth']
+    
+    @staticmethod
+    def get_tables():
 
-    def get_tables(self):
-        return [self.table]
+        """Make sure to define your table here"""
+        table = Table('bluetooth', MetaData(),
+                           Column('mac', String(12), primary_key=True),
+                           Column('name', Unicode, primary_key=True),
+                           Column('sunc', Integer, default=0))
+
+
+        return [table]
 
 
 if __name__=="__main__":

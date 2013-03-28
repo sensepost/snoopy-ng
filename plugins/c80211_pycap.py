@@ -122,7 +122,8 @@ class Snoop(Thread):
                            Column('sunc', Integer, default=0))
         return [table_ssids, table_prox]
 
-    def get_ident_tables(self):
+    @staticmethod
+    def get_ident_tables():
         """Return a list of tables that requrie identing - i.e. adding drone name and location"""
         return ['proximity_sessions']
 

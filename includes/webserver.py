@@ -6,11 +6,12 @@ import glob
 import os
 import random
 import string
+import sys
 from flask import Flask, request
 from sqlalchemy import create_engine, MetaData, Table, Column, String,\
                        select, and_
 
-logging.basicConfig(level=logging.DEBUG,
+logging.basicConfig(level=logging.DEBUG, filename='snoopy.log',
                     format='%(asctime)s %(levelname)s %(filename)s: %(message)s',
                     datefmt='%Y-%m-%d %H:%M:%S')
 
@@ -18,8 +19,13 @@ logging.basicConfig(level=logging.DEBUG,
 class Webserver(object):
     def __init__(self, dbms="sqlite:///snoopy.db", path="/", srv_port=9001):
         #Database
-        self.db = create_engine(dbms)
-        self.metadata = MetaData(self.db)
+        try:
+            self.db = create_engine(dbms)
+            self.metadata = MetaData(self.db)
+        except:
+            print "[!] Badly formed dbms schema. See http://docs.sqlalchemy.org/en/rel_0_8/core/engines.html for examples of valid schema"
+            sys.exit(-1)
+
         self.tables = {}
 
         logging.debug("Writing server database: %s" % dbms)
@@ -34,7 +40,7 @@ class Webserver(object):
                             and not os.path.basename(f).startswith(__file__) ]
         logging.debug("Server loading tables from plugins:%s" % str(moduleNames))
         for mod in moduleNames:
-            m = __import__(mod, fromlist="Snoop").Snoop()
+            m = __import__(mod, fromlist="Snoop").Snoop#()
             for ident in m.get_ident_tables():
                 if ident is not None:
                     ident_tables.append(ident)
@@ -96,12 +102,15 @@ class Webserver(object):
         for entry in rawdata:
             tbl = entry['table']
             data = entry['data']
+            if tbl not in self.tables:
+                logging.error("Error: Drone attempting to insert data into invalid table '%s'"%tbl)
+                return False
             try:
                 self.tables[tbl].insert().prefix_with("OR REPLACE").execute(data)
             except Exception:
                 logging.exception('Error:')
             else:
-                return True
+               return True
 
     def verify_account(self, _drone, _key):
         try:
@@ -114,6 +123,7 @@ class Webserver(object):
                 logging.debug("Auth granted for %s" % _drone)
                 return True
             else:
+                print "[E] Access denied for '%s'" % _drone
                 logging.debug("Access denied for %s" % _drone)
                 return False
         except Exception:
@@ -136,8 +146,6 @@ class Webserver(object):
                         drone = request.headers['Z-Drone']
 
                     if self.verify_account(drone, key):
-                        logging.debug("WROTE:")
-                        logging.debug(jsdata)
                         result = self.write_local_db(jsdata)
 
                         if result:

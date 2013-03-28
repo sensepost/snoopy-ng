@@ -39,7 +39,8 @@ class Snoop(Thread):
         """Ensure data is returned in the form of a SQL row."""
         return []
 
-    def get_ident_tables(self):
+    @staticmethod
+    def get_ident_tables():
         """Return a list of tables that requrie identing - i.e. adding drone name and location"""
         return [self.table]
 
