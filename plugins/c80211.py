@@ -25,6 +25,8 @@ class Snoop(Thread):
         self.iface = None
         self.enable_monitor_mode = False
         self.bfilter = ''
+	self.error = False	# Set to true to signal that thread has failed. Parent may then terminate and restart
+        self.sniffErrors = 0    # Number of times scapy has failed
         if args and args[0] is not None:
             try:
                 pargs=dict(a.split("=") for a in args[0])# for a in args[0][0].split(","))
@@ -81,17 +83,20 @@ class Snoop(Thread):
         #else:
         #    logging.debug("Starting sniffer plugin on interface '%s'" % self.iface)
 
-	if self.enable_monitor_mode:
-		self.iface=mm.enable_monitor_mode(self.iface)
-		if not self.iface:
-			logging.error("No suitable monitor interface available.")
-			self.STOP_SNIFFING = True
-
-        while self.STOP_SNIFFING == False:
+        while not self.STOP_SNIFFING:
+    
+            if self.enable_monitor_mode:
+                    self.iface=mm.enable_monitor_mode(self.iface)
+                    if not self.iface:
+                            print "[!] No suitable monitor interface available. Will look again in 5 seconds."
+                            logging.error("No suitable monitor interface available. Will look again in 5 seconds")
+                            time.sleep(5)
+            if not self.iface and self.enable_monitor_mode:
+                continue
             if not self.iface:
                 print "[W] Warning, no interface specified. Will sniff *all* interfaces."
             else:
-                print "[+] Sniffing on interface '%s'"%self.iface
+                print "[+] Starting sniffing on interface '%s'"%self.iface
             try:
                 sniff(store=0, iface=self.iface, prn=self.packeteer, filter=self.bfilter,
                       stopperTimeout=1, stopper=self.stopperCheck)
@@ -99,8 +104,12 @@ class Snoop(Thread):
                 logging.exception(("Scapy exception whilst sniffing. "
                                    "Will back off for 10 seconds, "
                                    "and try restart '%s' plugin") % __name__)
-            time.sleep(10)
-        #self.STOP_SNIFFING=True
+                self.sniffErrors+=1
+            if self.sniffErrors >3 :
+                logging.error("Restarting module after 5 failed attempts")
+                print "[!] Restarting module '%' after 5 errors"%__file__
+            else:
+                time.sleep(2)
 
     def stopperCheck(self):
         return self.STOP_SNIFFING

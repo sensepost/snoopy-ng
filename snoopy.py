@@ -113,6 +113,8 @@ class Snoopy():
     def get_data(self):
         """Fetch data from all plugins"""
         for m in self.modules:
+            if m.error:
+                print "It seems a module made a booboo"
             multidata = m.get_data()
             for rawdata in multidata:
                 if rawdata is not None and rawdata:
