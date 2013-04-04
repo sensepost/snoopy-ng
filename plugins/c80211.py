@@ -84,12 +84,13 @@ class Snoop(Thread):
         #    logging.debug("Starting sniffer plugin on interface '%s'" % self.iface)
 
         while not self.STOP_SNIFFING:
-    
+            shownMessage = False
             if self.enable_monitor_mode:
                     self.iface=mm.enable_monitor_mode(self.iface)
                     if not self.iface:
-                            print "[!] No suitable monitor interface available. Will look again in 5 seconds."
-                            logging.error("No suitable monitor interface available. Will look again in 5 seconds")
+                            if not shownMessage:
+                                print "[!] No suitable monitor interface available. Will check every 5 seconds, but not display this message again."
+                                logging.error("No suitable monitor interface available. Will check every 5 seconds, but not display this message again.")
                             time.sleep(5)
             if not self.iface and self.enable_monitor_mode:
                 continue

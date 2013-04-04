@@ -28,7 +28,12 @@ class Snoop(Thread):
 
     def run(self):
         """Operations for module go here."""
-        self.modemConn = Sakis(self.apn)
+        while self.RUN:
+            try:
+                self.modemConn = Sakis(self.apn)
+            except Exception, e:
+                logging.exception(e)
+                time.sleep(10)
 
     def stop(self):
         self.RUN = False

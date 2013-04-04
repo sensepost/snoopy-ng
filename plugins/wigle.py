@@ -33,8 +33,8 @@ class Snoop(Thread):
 
 
     def run(self):
-        while self.RUN:
-
+       # while self.RUN:
+       pass
 
 
     def stop(self):
