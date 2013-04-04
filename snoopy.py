@@ -45,6 +45,7 @@ class Snoopy():
             self.db = create_engine(dbms)
             self.metadata = MetaData(self.db)
         except:
+            logging.error("Badly formed dbms schema. See http://docs.sqlalchemy.org/en/rel_0_8/core/engines.html for examples of valid schema")
             print "[!] Badly formed dbms schema. See http://docs.sqlalchemy.org/en/rel_0_8/core/engines.html for examples of valid schema"
             sys.exit(-1)
         self.ident_tables = []
@@ -113,8 +114,6 @@ class Snoopy():
     def get_data(self):
         """Fetch data from all plugins"""
         for m in self.modules:
-            if m.error:
-                print "It seems a module made a booboo"
             multidata = m.get_data()
             for rawdata in multidata:
                 if rawdata is not None and rawdata:
@@ -151,7 +150,6 @@ class Snoopy():
                 query = table.select(table.c.sunc == 0)
                 ex = query.execute()
                 results = ex.fetchall()
-                #print "Found %d rows to sync in table %s" %(len(results), table)
                 if results:
                     total_rows_to_upload += len(results)
                     result_as_dict = [dict(e) for e in results]
@@ -225,6 +223,9 @@ def main():
     parser = OptionParser(usage=usage)
     #Client options
     group_c = OptionGroup(parser, "Client Options")
+
+    if os.geteuid() != 0:
+        sys.exit("Please run me with root privilages")
 
     parser.add_option("-c", "--client", dest="sync_server", action="store", help="Run Snoopy client component, uploading data to specified SYNC_SERVER (http://host:port) (specifcy 'local' for local only capture).")
     group_c.add_option("-d", "--drone", dest="drone", action="store", help="Specify the name of your drone.")
@@ -307,7 +308,7 @@ def main():
             print "Error: You must specify drone name (-d) and drone location (-l)"
             sys.exit(-1)
         if options.sync_server == "local":
-            print "Capturing local only"
+            print "[+] Capturing local only"
         else:
             if options.key is None:
                 print "Error: You must specify a key when uploading data (-k)"

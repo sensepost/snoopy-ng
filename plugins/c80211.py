@@ -41,6 +41,7 @@ class Snoop(Thread):
             #self.iface = args[0][0]
 
         Thread.__init__(self)
+        self.setName('c80211')
         self.STOP_SNIFFING = False
         self.time = 2
         self.db_buffer = collections.deque()
@@ -83,14 +84,15 @@ class Snoop(Thread):
         #else:
         #    logging.debug("Starting sniffer plugin on interface '%s'" % self.iface)
 
+        shownMessage = False
         while not self.STOP_SNIFFING:
-            shownMessage = False
             if self.enable_monitor_mode:
                     self.iface=mm.enable_monitor_mode(self.iface)
                     if not self.iface:
                             if not shownMessage:
                                 print "[!] No suitable monitor interface available. Will check every 5 seconds, but not display this message again."
                                 logging.error("No suitable monitor interface available. Will check every 5 seconds, but not display this message again.")
+                                shownMessage = True
                             time.sleep(5)
             if not self.iface and self.enable_monitor_mode:
                 continue
@@ -99,6 +101,7 @@ class Snoop(Thread):
             else:
                 print "[+] Starting sniffing on interface '%s'"%self.iface
             try:
+                shownMessage = False
                 sniff(store=0, iface=self.iface, prn=self.packeteer, filter=self.bfilter,
                       stopperTimeout=1, stopper=self.stopperCheck)
             except Exception:
@@ -108,7 +111,7 @@ class Snoop(Thread):
                 self.sniffErrors+=1
             if self.sniffErrors >3 :
                 logging.error("Restarting module after 5 failed attempts")
-                print "[!] Restarting module '%' after 5 errors"%__file__
+                print "[!] Restarting module '%s' after 5 errors"%__file__
             else:
                 time.sleep(2)
 

@@ -8,53 +8,101 @@ import sys
 import os
 import logging
 
+if os.geteuid() != 0:
+    exit("Please run me with root privilages")
+
 DN = open(os.devnull, 'w')
 logging.basicConfig(format='%(message)s', level=logging.DEBUG)
 
 scriptPath=os.path.dirname(os.path.realpath(__file__))
-os.chdir(scriptPath)
+#os.chdir(scriptPath)
+sakis_exec=scriptPath + "/sakis3g"
 
 class Sakis(Thread):
     """Uses the sakis3g binary to maintain a 3G connection. Supply APN"""
-    def __init__(self,apn):
+    def __init__(self,apn,bg = False):
         self.apn=apn
-        if not os.path.isfile("./sakis3g"):
+        self.dorun = True
+        if not os.path.isfile(sakis_exec):
+            print "[!] 'sakis3g' binary is not in '%s' directory" % scriptPath
             logging.error("Error: 'sakis3g' binary is not in '%s' directory" % scriptPath)
             sys.exit(-1)
         Thread.__init__(self)
         self.start()
 
+        if bg:
+            logging.debug("[+] Starting backround 3G connection maintainer.")
+        else:
+            logging.debug("[+] Starting foreground 3G connection maintainer.")
+            self.join()
+
     def run(self):
-        logging.info("[+] Starting backround 3G connection maintainer.")
-        logging.info("[-] Current status is '%s'" % self.status())
-        while self.run:
-            if self.status() != "Connected":
-                logging.info("[+] Attempting to connect to 3G network '%s'" % self.apn)
+        self.maintain_connection()
+
+    def maintain_connection(self):
+        sawMessage, sawMessage2 = False, False
+        while self.dorun:
+            detected = self.is_plugged()
+            while not detected and self.dorun:
+                if not sawMessage2:
+                    print "[W] No modem detected. Will check every 5 seconds until one apears, but won't show this message again."
+                    logging.debug("[W] No modem detected. Will check every 5 seconds until one apears, but won't show this message again.")
+                    sawMessage2 = True
+                time.sleep(5)
+                detected = self.is_plugged()
+            sawMessage2 = False
+            if self.status() != "Connected" and detected and self.dorun:
+                print "[+] Modem detected, but not currently online. Attempting to connect to 3G network '%s'" % self.apn
+                logging.debug("[+] Modem detected, but not currently online. Attempting to connect to 3G network '%s'" % self.apn)
                 self.connect(self.apn)
                 time.sleep(2)
                 if self.status() == "Connected":
-                    logging.info("[+] Successfully connected to '%s'" % self.apn)
+                    logging.debug("Successfully connected to '%s'" % self.apn)
+                    print "[+] Successfully connected to '%s'" % self.apn
+                else:
+                    print "[W] Could not connect to '%s'. Will try again in 5 seconds" % self.apn
+                    logging.debug("Could not connect to '%s'. Will try again in 5 seconds" % self.apn)
+            else:
+                if not sawMessage:
+                    print "[+] Modem is online."
+                    sawMessage = True
             time.sleep(5)
     
     def stop(self):
-        logging.info("[+] Stopping 3G connector. Will leave connection in its current state.")
-        self.run = False
+        print "[+] Stopping 3G connector. Will leave connection in its current state."
+        self.dorun = False
+
+    @staticmethod
+    def is_plugged():
+        """Check if modem is plugged in"""
+        try:
+            r=subprocess.call([sakis_exec, "plugged"], stdout=DN, stderr=DN)
+            if r == 0:
+                return True
+            else:
+                return False
+        except Exception,e:
+            logging.error(e)
+            return False
+        
 
     @staticmethod
     def status():
         try:
-            r=subprocess.call(["./sakis3g", "status"], stdout=DN, stderr=DN)
+            r=subprocess.call([sakis_exec, "status"], stdout=DN, stderr=DN)
             if r == 0:
                 return "Connected"
             elif r == 6:
                 return "Disconnected"
             else:
                 return "Unknown"
-        except:
+        except Exception,e:
+             logging.error(e)
              return "Error"
+
     @staticmethod
     def disconnect():
-        r=subprocess.call(["./sakis3g", "disconnect"], stdout=DN, stderr=DN)
+        r=subprocess.call([sakis_exec, "disconnect"], stdout=DN, stderr=DN)
 
     @staticmethod
     def get_apns():
@@ -63,17 +111,24 @@ class Sakis(Thread):
     @staticmethod
     def connect(apn):
         try:
-            r=subprocess.call(["./sakis3g", "connect", "APN='%s'"%apn], stdout=DN, stderr=DN)
+            r=subprocess.call([sakis_exec, "connect", "APN='%s'"%apn], stdout=DN, stderr=DN)
             return r
-        except:
+        except Exception,e:
+            logging.error(e)
             return -1
+
+def usage():
+    print "Usage:"
+    print "\t%s <APN>"%__file__
+    print "\te.g. %s orange.fr"%__file__
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        logging.error("Please supply APN (e.g. 'orange.fr'")
+        usage()
         sys.exit(-1)
     f=None
     try: 
-        f=Sakis(sys.argv[1])
+        f=Sakis(sys.argv[1], False)
     except KeyboardInterrupt:
+        logging.info("Caught Ctrl+C. Shutting down")
         f.stop()

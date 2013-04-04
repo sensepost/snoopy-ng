@@ -1,0 +1,18 @@
+# c80211_pycap.py module
+apt-get install python2.7-dev
+apt-get install libpcap0.8-dev
+wget http://switch.dl.sourceforge.net/project/pylibpcap/pylibpcap/0.6.4/pylibpcap-0.6.4.tar.gz
+tar xzf pylibpcap-0.6.4.tar.gz
+cd pylibpcap-0.6.4
+python setup.py install
+easy_install dpkt
+wget https://dpkt.googlecode.com/files/dpkt-1.7.tar.gz
+tar xzf dpkt-1.7.tar.gz 
+cd dpkt-1.7/
+python setup.py install
+
+# bt.py module
+apt-get install python-bluez
+
+# c80211.py module
+apt-get install python-scapy

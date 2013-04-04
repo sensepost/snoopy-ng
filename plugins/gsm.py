@@ -2,9 +2,10 @@
 # -*- coding: utf-8 -*-
 
 import logging
-import sqlalchemy as sa
 from threading import Thread
 from includes.sakis import Sakis 
+import time
+from sqlalchemy import MetaData, Table, Column, String, Unicode, Integer
 
 logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s %(levelname)s %(filename)s: %(message)s',
@@ -17,20 +18,24 @@ class Snoop(Thread):
         self.RUN = True
         self.modemConn = None 
         if args and args[0] is not None:
-            print args[0] 
             try:
                 pargs=dict(a.split("=") for a in args[0])# for a in args[0][0].split(","))
                 if 'APN' in pargs:
                     self.apn = pargs['APN']
+                else:
+                    logging.error("No APN supplied")
+                    exit()
             except Exception,e:
                 logging.error("Bad arguments passed to module")
                 print e
 
     def run(self):
         """Operations for module go here."""
+
         while self.RUN:
             try:
-                self.modemConn = Sakis(self.apn)
+                self.modemConn = Sakis(self.apn, True)
+                self.modemConn.join()
             except Exception, e:
                 logging.exception(e)
                 time.sleep(10)
@@ -55,7 +60,6 @@ class Snoop(Thread):
     @staticmethod
     def get_tables():
         return []
-
 
 if __name__ == "__main__":
     Snoop().start()
