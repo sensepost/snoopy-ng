@@ -38,21 +38,26 @@ class Webserver(object):
                         for f in glob.glob("./plugins/*.py")
                         if not os.path.basename(f).startswith('__') \
                             and not os.path.basename(f).startswith(__file__) ]
+        print "Server loaded modules: %s" % str(moduleNames)
         logging.debug("Server loading tables from plugins:%s" % str(moduleNames))
+        self.tbls = []
+        tbl_drone=Table('drones', MetaData(),
+                        Column('drone', String(40), primary_key=True),
+                        Column('key', String(40)))
+        self.tbls.append(tbl_drone)
+
         for mod in moduleNames:
             m = __import__(mod, fromlist="Snoop").Snoop#()
             for ident in m.get_ident_tables():
                 if ident is not None:
                     ident_tables.append(ident)
-            tbls = m.get_tables()
+            
+            tmptables = m.get_tables()
+            for t in tmptables:
+                self.tbls.append(t)
+            #print tbls
 
-        #Manually add drone table
-        tbl_drone=Table('drones', MetaData(),
-                        Column('drone', String(40), primary_key=True),
-                        Column('key', String(40)))
-        tbls.append(tbl_drone)
-
-        for tbl in tbls:
+        for tbl in self.tbls:
             tbl.metadata = self.metadata
             if tbl.name in ident_tables:
                 tbl.append_column( Column('drone',String(length=20)) )
@@ -60,7 +65,7 @@ class Webserver(object):
                 tbl.append_column( Column('run_id', String(length=11)) )
             self.tables[tbl.name] = tbl
             if not self.db.dialect.has_table(self.db.connect(), tbl.name):
-                tbl.create()
+                 tbl.create()
 
         logging.debug("Starting webserver")
         self.run_webserver(path,srv_port)
