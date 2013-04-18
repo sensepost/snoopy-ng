@@ -12,24 +12,31 @@ import sys
 import urllib2   # In the meantime, we shall use urllib2
 from optparse import OptionParser, OptionGroup
 from sqlalchemy import create_engine, MetaData, Column, String
-
 #Server
 import string
 import random
 
-logging.basicConfig(level=logging.DEBUG, filename='snoopy.log',
+#Logging
+logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s %(levelname)s %(filename)s: %(message)s',
-                    datefmt='%Y-%m-%d %H:%M:%S')
+                    datefmt='%Y-%m-%d %H:%M:%S',
+                    filename='snoopy.log',
+                    filemode='w')
+# define a Handler which writes INFO messages or higher to the sys.stderr
+console = logging.StreamHandler()
+console.setLevel(logging.INFO)
+console.setFormatter(logging.Formatter('[%(levelname)s] %(message)s'))
+logging.getLogger('').addHandler(console)
 
 
 class Snoopy():
     SYNC_FREQ = 5 #Sync every 5 seconds
+    MODULE_START_GRACE_TIME = 60 #A module gets this time to indicate its ready, before moving to next module.
 
-    def __init__(self, moduleNames, dbms="sqlite:///snoopy.db",
+    def __init__(self, _modules, dbms="sqlite:///snoopy.db",
                  server="http://localhost:9001/", drone="unnamedDrone",
                  key=None, location="unknownLocation"):
-        moduleNames = ["plugins."+ x for x in moduleNames]
-
+        #moduleNames = ["plugins."+ x for x in moduleNames]
         #local data
         self.all_data = {}
         self.run = True
@@ -46,11 +53,10 @@ class Snoopy():
             self.metadata = MetaData(self.db)
         except:
             logging.error("Badly formed dbms schema. See http://docs.sqlalchemy.org/en/rel_0_8/core/engines.html for examples of valid schema")
-            print "[!] Badly formed dbms schema. See http://docs.sqlalchemy.org/en/rel_0_8/core/engines.html for examples of valid schema"
             sys.exit(-1)
         self.ident_tables = []
 
-        self._load_modules(moduleNames)
+        self._load_modules(_modules)
 
         try:
             self.go()
@@ -58,17 +64,67 @@ class Snoopy():
             print "Caught Ctrl+C! Shutting down..."
             self.stop()
 
-    def _load_modules(self, moduleNames):
+    def _load_modules(self, modules_to_load):
         self.modules = []
-        for mod in moduleNames:
-            mds = mod.split(":", 1)
-            mod = mds[0]
-            params = None
-            if len(mds) > 1:
-                params = mds[1].split(",")
+        for mod in modules_to_load:
+            mod_name = mod['name']
+            mod_params = mod['params']
+            m = __import__(mod_name, fromlist="Snoop").Snoop(**mod_params)
+            self.modules.append(m)
+
+            logging.debug("Creating/checking tables for %s" % mod_name)
+            for ident in m.get_ident_tables():
+                if ident is not None:
+                    self.ident_tables.append(ident)
+            tbls = m.get_tables()
+            for tbl in tbls:
+                tbl.metadata = self.metadata
+                if tbl.name in self.ident_tables:
+                    tbl.append_column( Column('drone', String(length=20)) )
+                    tbl.append_column( Column('location', String(length=60)) )
+                    tbl.append_column( Column('run_id', String(length=11)) )
+
+                self.tables[tbl.name] = tbl
+                if not self.db.dialect.has_table(self.db.connect(), tbl.name):
+                    tbl.create()
+
+        #Start modules
+            m.start()
+            mod_start_time = os.times()[4]    #Get a system clock indepdent timer
+            logging.info("Waiting for module '%s' to indicate it's ready" % mod_name)
+            while not m.is_ready() and (os.times()[4] - mod_start_time) < self.MODULE_START_GRACE_TIME:
+                time.sleep(2)
+            if not m.is_ready():
+                logging.info("Module '%s' ran out of time to indicate its ready state, moving on to next module." % mod_name)
+            else:
+                logging.info("Module '%s' has indicated it's ready." % mod_name)
+
+        logging.info("Done loading modules, running...")
+
+
+    def _load_modules_old(self, moduleNames):
+#        self.modules = []
+#        for mod in moduleNames:
+#            mds = mod.split(":", 1)
+#            mod = mds[0]
+#            params = None
+#            if len(mds) > 1:
+#                params = mds[1].split(",")
+          
+        self.modules = []
+        for mod in moduleNames.iteritems(): 
 
             m = __import__(mod, fromlist="Snoop").Snoop(params)
+            mod_start_time = os.times()[4]    #Get a system clock indepdent timer
             m.start()
+            logging.info("[+] Waiting for module '%s' to indicate it's ready" % mod)
+            while not m.is_ready() and (os.times()[4] - mod_start_time) < self.MODULE_START_GRACE_TIME:
+                time.sleep(2)
+            if not m.is_ready():
+                logging.info("Module '%s' ran out of time to indicate its ready state, moving on to next module." % mod)
+            else:
+                logging.info("Modules '%s' has indicated it's ready." % mod)
+
             self.modules.append(m)
 
             for ident in m.get_ident_tables():
@@ -189,12 +245,10 @@ class Snoopy():
                 return True
             else:
                 reason = result['reason']
-                print "[E] Unable to upload data to '%s' - '%s'"% (self.server,reason)
-                logging.debug("Failed to upload data - '%s'"%reason)
+                logging.error("Unable to upload data to '%s' - '%s'"% (self.server,reason))
                 return False
         except Exception, e:
-            print "[E] Unable to upload data to '%s' - '%s'"% (self.server,e)
-            logging.debug("Exception whilst attempting to upload data:")
+            logging.error("Unable to upload data to '%s' - '%s'"% (self.server,e))
             logging.debug(e)
             return False
 
@@ -215,7 +269,6 @@ class Snoopy():
         #    logging.debug("Exception whilst attempting to upload data:")
         #    logging.debug(e)
         #    return False
-
 
 def main():
     print "Snoopy V0.2. glenn@sensepost.com\n"
@@ -255,7 +308,6 @@ def main():
     options, args = parser.parse_args()
 
     moduleNames = Snoopy.get_plugins() #[os.path.basename(f)[:-3] for f in glob.glob("./plugins/client/*.py") if not os.path.basename(f).startswith('__')]
-
     if options.list:
         print "[+] Modules available:"
         for mod in moduleNames:
@@ -298,48 +350,53 @@ def main():
 
     if (options.sync_server is not None and options.server_port is not None) or \
             (options.sync_server is None and options.server_port is None):
-        print "Error: No options specified. Try -h for help."
+        logging.error("No options specified. Try -h for help.")
         sys.exit(-1)
-
 
     #Client mode
     if options.sync_server is not None:
         if options.drone is None or options.location is None :
-            print "Error: You must specify drone name (-d) and drone location (-l)"
+            logging.error("You must specify drone name (-d) and drone location (-l)")
             sys.exit(-1)
         if options.sync_server == "local":
-            print "[+] Capturing local only"
+            logging.info("Capturing local only")
         else:
             if options.key is None:
-                print "Error: You must specify a key when uploading data (-k)"
+                logging.error("You must specify a key when uploading data (-k)")
                 sys.exit(-1)
 
         mods = options.module
         if options.module is None:
             #mods = moduleNames
-            print "Error: You must specify at least one module. Try -h for help"
+            logging.error("Error: You must specify at least one module. Try -h for help")
             sys.exit(-1)
         #Check validity of mods
         for m in mods:
             if m.split(":", 1)[0] not in moduleNames:
-                print ("Error: Invalid module - '%s'. "
-                       "Use --list to list all available modules.") % \
-                      (m.split(":", 1)[0])
+                logging.error("Invalid module - '%s'. Use --list to list all available modules." % (m.split(':', 1)[0]))
                 sys.exit(-1)
-        print "[+] Starting Snoopy with modules: %s" % (str(mods))
-        Snoopy(mods, options.dbms, options.sync_server, options.drone,
+        logging.info("Starting Snoopy with modules: %s" % (str(mods)))
+
+        newmods=[]
+        for m in mods:
+            mds = m.split(":", 1)
+            name = mds[0]
+            params = {}
+            if len(mds) > 1:
+                params = dict(a.split("=") for a in mds[1].split(","))        
+            newmods.append({'name':'plugins.'+name, 'params':params})
+
+        Snoopy(newmods, options.dbms, options.sync_server, options.drone,
                options.key, options.location)
 
     #Server mode
     else:
-        print ("[+] Starting Snoopy sync web server. "
-               "Listening on port '%d' with sync web path '%s'") % \
-              (options.server_port, options.server_path)
+        logging.info ("[+] Starting Snoopy sync web server. "
+               "Listening on port '%d' with sync web path '%s'" % \
+              (options.server_port, options.server_path))
         import includes.webserver
         includes.webserver.Webserver(options.dbms,
                                      options.server_path, options.server_port)
-    #print str(options)
-
 
 if __name__ == "__main__":
     main()

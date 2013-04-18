@@ -5,6 +5,7 @@ import logging
 from threading import Thread
 from includes.sakis import Sakis 
 import time
+import os
 from sqlalchemy import MetaData, Table, Column, String, Unicode, Integer
 
 logging.basicConfig(level=logging.DEBUG,
@@ -13,21 +14,17 @@ logging.basicConfig(level=logging.DEBUG,
 
 
 class Snoop(Thread):
-    def __init__(self, *args):
+    def __init__(self, **kwargs):
         Thread.__init__(self)
         self.RUN = True
         self.modemConn = None 
-        if args and args[0] is not None:
-            try:
-                pargs=dict(a.split("=") for a in args[0])# for a in args[0][0].split(","))
-                if 'APN' in pargs:
-                    self.apn = pargs['APN']
-                else:
-                    logging.error("No APN supplied")
-                    exit()
-            except Exception,e:
-                logging.error("Bad arguments passed to module")
-                print e
+        self.time_started = os.times()[4]
+
+        # Process arguments passed to module
+        self.apn = kwargs.get('APN',None)
+        if not self.apn:
+            logging.error("No APN supplied")
+            exit()
 
     def run(self):
         """Operations for module go here."""
@@ -43,6 +40,11 @@ class Snoop(Thread):
     def stop(self):
         self.RUN = False
         self.modemConn.stop()
+
+    def is_ready(self):
+        if os.times()[4] - self.time_started > 10:    #Avoid calling this heavy function too often
+            if self.modemConn.status() == "Connected":
+                return True
 
     @staticmethod
     def get_parameter_list():

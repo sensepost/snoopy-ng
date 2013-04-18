@@ -24,7 +24,6 @@ class Sakis(Thread):
         self.apn=apn
         self.dorun = True
         if not os.path.isfile(sakis_exec):
-            print "[!] 'sakis3g' binary is not in '%s' directory" % scriptPath
             logging.error("Error: 'sakis3g' binary is not in '%s' directory" % scriptPath)
             sys.exit(-1)
         Thread.__init__(self)
@@ -45,31 +44,27 @@ class Sakis(Thread):
             detected = self.is_plugged()
             while not detected and self.dorun:
                 if not sawMessage2:
-                    print "[W] No modem detected. Will check every 5 seconds until one apears, but won't show this message again."
-                    logging.debug("[W] No modem detected. Will check every 5 seconds until one apears, but won't show this message again.")
+                    logging.info("No modem detected. Will check every 5 seconds until one apears, but won't show this message again.")
                     sawMessage2 = True
                 time.sleep(5)
                 detected = self.is_plugged()
             sawMessage2 = False
             if self.status() != "Connected" and detected and self.dorun:
-                print "[+] Modem detected, but not currently online. Attempting to connect to 3G network '%s'" % self.apn
-                logging.debug("[+] Modem detected, but not currently online. Attempting to connect to 3G network '%s'" % self.apn)
+                logging.info("Modem detected, but not currently online. Attempting to connect to 3G network '%s'" % self.apn)
                 self.connect(self.apn)
                 time.sleep(2)
                 if self.status() == "Connected":
-                    logging.debug("Successfully connected to '%s'" % self.apn)
-                    print "[+] Successfully connected to '%s'" % self.apn
+                    logging.info("Successfully connected to '%s'" % self.apn)
                 else:
-                    print "[W] Could not connect to '%s'. Will try again in 5 seconds" % self.apn
-                    logging.debug("Could not connect to '%s'. Will try again in 5 seconds" % self.apn)
+                    logging.info("Could not connect to '%s'. Will try again in 5 seconds" % self.apn)
             else:
                 if not sawMessage:
-                    print "[+] Modem is online."
+                    logging.info("Modem is online.")
                     sawMessage = True
             time.sleep(5)
     
     def stop(self):
-        print "[+] Stopping 3G connector. Will leave connection in its current state."
+        logging.info("Stopping 3G connector. Will leave connection in its current state.")
         self.dorun = False
 
     @staticmethod

@@ -11,7 +11,7 @@ from flask import Flask, request
 from sqlalchemy import create_engine, MetaData, Table, Column, String,\
                        select, and_
 
-logging.basicConfig(level=logging.DEBUG, filename='snoopy.log',
+logging.basicConfig(level=logging.DEBUG, filename='snoopy_server.log',
                     format='%(asctime)s %(levelname)s %(filename)s: %(message)s',
                     datefmt='%Y-%m-%d %H:%M:%S')
 
@@ -23,7 +23,7 @@ class Webserver(object):
             self.db = create_engine(dbms)
             self.metadata = MetaData(self.db)
         except:
-            print "[!] Badly formed dbms schema. See http://docs.sqlalchemy.org/en/rel_0_8/core/engines.html for examples of valid schema"
+            logging.error ("Badly formed dbms schema. See http://docs.sqlalchemy.org/en/rel_0_8/core/engines.html for examples of valid schema")
             sys.exit(-1)
 
         self.tables = {}
@@ -38,7 +38,7 @@ class Webserver(object):
                         for f in glob.glob("./plugins/*.py")
                         if not os.path.basename(f).startswith('__') \
                             and not os.path.basename(f).startswith(__file__) ]
-        print "Server loaded modules: %s" % str(moduleNames)
+        logging.info("Server loaded modules: %s" % str(moduleNames))
         logging.debug("Server loading tables from plugins:%s" % str(moduleNames))
         self.tbls = []
         tbl_drone=Table('drones', MetaData(),
@@ -55,7 +55,6 @@ class Webserver(object):
             tmptables = m.get_tables()
             for t in tmptables:
                 self.tbls.append(t)
-            #print tbls
 
         for tbl in self.tbls:
             tbl.metadata = self.metadata
@@ -128,7 +127,6 @@ class Webserver(object):
                 logging.debug("Auth granted for %s" % _drone)
                 return True
             else:
-                print "[E] Access denied for '%s'" % _drone
                 logging.debug("Access denied for %s" % _drone)
                 return False
         except Exception:

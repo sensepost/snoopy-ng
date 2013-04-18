@@ -2,6 +2,7 @@ from subprocess import Popen, call, PIPE
 import errno
 from types import *
 import logging
+import sys
 
 def run_program(executable,executable_options=[]):
     """
@@ -14,14 +15,18 @@ def run_program(executable,executable_options=[]):
         response_stdout, response_stderr = response[0].split('\n')[0], response[1].split('\n')[0]
     except OSError, e:
         if e.errno == errno.ENOENT:
-            logging.error( "[E] Unable to locate '%s' program. Is it in your path?" % executable )
+            logging.error( "Unable to locate '%s' program. Is it in your path?" % executable )
         else:
-            logging.error( "[E] O/S error occured when trying to run '%s': \"%s\"" % (executable, str(e)) )
+            logging.error( "O/S error occured when trying to run '%s': \"%s\"" % (executable, str(e)) )
     except ValueError, e:
-        logging.error( "[E] Value error occured. Check your parameters." )
+        logging.error( "Value error occured. Check your parameters." )
     else:
         if proc.wait() != 0:    
-            logging.error( "[E] Executable '%s' returned with the error: \"%s\"" %(executable,response_stderr) )
+            logging.error( "Executable '%s' returned with the error: \"%s\"" %(executable,response_stderr) )
         else:
             logging.debug( "Executable '%s' returned successfully. First line of response was \"%s\"" %(executable, response_stdout) )
             return True
+
+if __name__ == "__main__":
+    options = sys.argv[2:]
+    run_program(sys.argv[1],sys.argv[2:])

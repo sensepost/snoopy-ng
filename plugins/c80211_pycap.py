@@ -13,17 +13,13 @@ class Snoop(Thread):
     DELTA_PROX = 300
     """Proximity session duration, before starting a new one"""
 
-    def __init__(self, *args):
+    def __init__(self, *kwargs):
         Thread.__init__(self)
         self.RUN = True
         self.device_ssids = {}
 
-        self.iface = None
-        if args and args[0] is not None:
-            self.iface = args[0][0]
-        else:
-            logging.error("No interface specified!")
-            self.iface = "NoInterfaceSelected"
+        # Process arguments passed to module
+        self.iface = kwargs.get('iface',None)
 
         #Prox sess vars
         self.MOST_RECENT_TIME = 0

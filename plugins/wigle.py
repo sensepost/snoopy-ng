@@ -12,24 +12,17 @@ logging.basicConfig(level=logging.DEBUG,
 
 
 class Snoop(Thread):
-    def __init__(self, *args):
+    def __init__(self, *kwargs):
         Thread.__init__(self)
         self.RUN = True
         self.username=''
         self.password=''
         self.db='snoopy.db'
 
-        if args and args[0] is not None:
-            try:
-                pargs=dict(a.split("=") for a in args[0])# for a in args[0][0].split(","))
-                if 'username' in pargs:
-                    self.iface = pargs['iface']
-                if 'password' in pargs and pargs['mon'].lower()=="true":
-                    self.enable_monitor_mode = True
-                if 'db' in pargs:
-                    self.bfilter = pargs['filter']
-            except:
-                logging.error("Bad arguments passed to module")
+        # Process arguments passed to module
+        self.username = kwargs.get('username','NoUserNameSupplied')
+        self.password = kwargs.get('password','NoPasswordSupplied')
+        self.db = kwargs.get('db',None)
 
 
     def run(self):

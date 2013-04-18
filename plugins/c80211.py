@@ -8,11 +8,10 @@ import os
 import time
 from threading import Thread
 import includes.monitor_mode as mm
-
+#import includes.LogManager
 logging.getLogger("scapy.runtime").setLevel(logging.ERROR)
 from scapy.all import sniff, Dot11Elt, Dot11ProbeReq
-logging.basicConfig(level=logging.DEBUG,format='%(asctime)s %(levelname)s %(filename)s: %(message)s',datefmt='%Y-%m-%d %H:%M:%S')
-
+#logging.basicConfig(level=logging.DEBUG,format='%(asctime)s %(levelname)s %(filename)s: %(message)s',datefmt='%Y-%m-%d %H:%M:%S')
 
 class Snoop(Thread):
     """
@@ -21,30 +20,18 @@ class Snoop(Thread):
     being mon0.
     """
 
-    def __init__(self, *args):
-        self.iface = None
-        self.enable_monitor_mode = False
-        self.bfilter = ''
-	self.error = False	# Set to true to signal that thread has failed. Parent may then terminate and restart
+    def __init__(self, **kwargs):
         self.sniffErrors = 0    # Number of times scapy has failed
-        if args and args[0] is not None:
-            try:
-                pargs=dict(a.split("=") for a in args[0])# for a in args[0][0].split(","))
-                if 'iface' in pargs:
-                    self.iface = pargs['iface']
-                if 'mon' in pargs and pargs['mon'].lower()=="true":
-                    self.enable_monitor_mode = True
-                if 'filter' in pargs:
-                    self.bfilter = pargs['filter']
-            except:
-                logging.error("Bad arguments passed to module")
-            #self.iface = args[0][0]
+        self.ready_status = False
+
+        # Process arguments passed to module
+        self.iface = kwargs.get('iface',None)
+        self.enable_monitor_mode = kwargs.get('mon',False)
+        self.bfilter = kwargs.get('filter',"")
 
         Thread.__init__(self)
         self.setName('c80211')
         self.STOP_SNIFFING = False
-        self.time = 2
-        self.db_buffer = collections.deque()
 
         self.modules = []
         for m in Snoop.get_modules():
@@ -75,6 +62,9 @@ class Snoop(Thread):
             name and location."""
         return ['proximity_sessions']
 
+    def is_ready(self):
+        return self.ready_status
+
     def stop(self):
         self.STOP_SNIFFING = True
 
@@ -90,17 +80,17 @@ class Snoop(Thread):
                     self.iface=mm.enable_monitor_mode(self.iface)
                     if not self.iface:
                             if not shownMessage:
-                                print "[!] No suitable monitor interface available. Will check every 5 seconds, but not display this message again."
                                 logging.error("No suitable monitor interface available. Will check every 5 seconds, but not display this message again.")
                                 shownMessage = True
                             time.sleep(5)
             if not self.iface and self.enable_monitor_mode:
                 continue
             if not self.iface:
-                print "[W] Warning, no interface specified. Will sniff *all* interfaces."
+                logging.info("No interface specified. Will sniff *all* interfaces.")
             else:
-                print "[+] Starting sniffing on interface '%s'"%self.iface
+                logging.info("Starting sniffing on interface '%s'"%self.iface)
             try:
+                self.ready_status = True
                 shownMessage = False
                 sniff(store=0, iface=self.iface, prn=self.packeteer, filter=self.bfilter,
                       stopperTimeout=1, stopper=self.stopperCheck)
@@ -110,8 +100,7 @@ class Snoop(Thread):
                                    "and try restart '%s' plugin") % __name__)
                 self.sniffErrors+=1
             if self.sniffErrors >3 :
-                logging.error("Restarting module after 5 failed attempts")
-                print "[!] Restarting module '%s' after 5 errors"%__file__
+                logging.error("Restarting module '%s' after 5 failed attempts" %__file__)
             else:
                 time.sleep(2)
 

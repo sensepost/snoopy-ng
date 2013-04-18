@@ -14,7 +14,7 @@ logging.basicConfig(level=logging.DEBUG,
 
 
 class Snoop(Thread):
-    def __init__(self, *args):
+    def __init__(self, *kwargs):
         Thread.__init__(self)
         self.devices = {}
         self.RUN = True
@@ -34,6 +34,9 @@ class Snoop(Thread):
 
     def stop(self):
         self.RUN = False
+
+    def is_ready(self):
+        return False
 
     @staticmethod
     def get_parameter_list():

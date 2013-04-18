@@ -6,9 +6,9 @@ import os
 import re
 import logging
 
-logging.basicConfig(level=logging.DEBUG,
-                    format='%(asctime)s %(levelname)s %(filename)s: %(message)s',
-                    datefmt='%Y-%m-%d %H:%M:%S')
+#logging.basicConfig(level=logging.DEBUG,
+#                    format='%(asctime)s %(levelname)s %(filename)s: %(message)s',
+#                    datefmt='%Y-%m-%d %H:%M:%S')
 
 DN = open(os.devnull, 'w')
 
@@ -30,7 +30,7 @@ def enable_monitor_mode(iface=''):
             logging.debug("Enabled monitor mode '%s'"%monif[0])
             return monif[0]
     else:
-        logging.error("No wireless interface supporting monitor mode found")
+        logging.debug("No wireless interface supporting monitor mode found")
         return None
 
 def disable_monitor_mode(iface=''):
