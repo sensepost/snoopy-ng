@@ -7,7 +7,8 @@ import os
 import random
 import string
 import sys
-from flask import Flask, request
+from flask import Flask, request, Response
+from functools import wraps
 from sqlalchemy import create_engine, MetaData, Table, Column, String,\
                        select, and_
 
@@ -133,11 +134,28 @@ class Webserver(object):
             logging.exception('Error:')
             return False
 
+    def authenticate(self):
+        """Sends a 401 response that enables basic auth"""
+        return Response(
+        'Could not verify your access level for that URL.\n'
+        'You have to login with proper credentials', 401,
+        {'WWW-Authenticate': 'Basic realm="Login Required"'})
+    
+    def requires_auth(self,f):
+        @wraps(f)
+        def decorated(*args, **kwargs):
+            auth = request.authorization
+            if not auth or not self.verify_account(auth.username, auth.password):
+                return self.authenticate()
+            return f(*args, **kwargs)
+        return decorated
+
     #Perhaps make this a module?
     def run_webserver(self, path, srv_port):
         app = Flask(__name__)
 
         @app.route(path, methods=['POST'])
+        @self.requires_auth
         def catch_data():
             if request.headers['Content-Type'] == 'application/json':
                 try:

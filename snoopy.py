@@ -12,11 +12,20 @@ import sys
 import urllib2   # In the meantime, we shall use urllib2
 from optparse import OptionParser, OptionGroup
 from sqlalchemy import create_engine, MetaData, Column, String
+import base64
 #Server
 import string
 import random
 
+#Set path
+snoopyPath=os.path.dirname(os.path.realpath(__file__))
+os.chdir(snoopyPath)
+
 #Logging
+logging.addLevelName(logging.INFO,"+")
+logging.addLevelName(logging.ERROR,"!")
+logging.addLevelName(logging.DEBUG,"D")
+
 logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s %(levelname)s %(filename)s: %(message)s',
                     datefmt='%Y-%m-%d %H:%M:%S',
@@ -232,8 +241,9 @@ class Snoopy():
                               total_rows_to_upload)
 
     def web_upload(self, json_data):
+        base64string = base64.encodestring('%s:%s' % (self.drone, self.key)).replace('\n', '')
         headers = {'content-type': 'application/json',
-                   'Z-Auth': self.key, 'Z-Drone': self.drone}
+                   'Z-Auth': self.key, 'Z-Drone': self.drone, 'Authorization':'Basic %s' % base64string}
 
         # urllib2, until Maemo urllib3 fixed
         try:
