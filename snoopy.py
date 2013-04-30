@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 # Glenn Wilkinson 2013
-
 import glob
 import os
 import logging
@@ -16,6 +15,9 @@ import base64
 #Server
 import string
 import random
+#CommandShell
+from includes.command_shell import CommandShell
+
 
 #Set path
 snoopyPath=os.path.dirname(os.path.realpath(__file__))
@@ -55,6 +57,9 @@ class Snoopy():
         self.key = key
         self.run_id = ''.join(random.choice(string.ascii_uppercase + string.digits)
                               for x in range(10))
+        #Command Shell
+        self.cmdShell = CommandShell(self.server, self.drone, self.key)
+
         #Database
         self.tables = {}
         try:
@@ -159,7 +164,7 @@ class Snoopy():
                         if not os.path.basename(f).startswith('__') ]
 
     def go(self):
-        #Proceed
+        self.cmdShell.start() #Start command shell
         last_update = 0
         while self.run:
             self.get_data()
@@ -172,6 +177,7 @@ class Snoopy():
             time.sleep(1) #Delay between checking threads for new data
 
     def stop(self):
+        self.cmdShell.stop()
         self.run = False
         for m in self.modules:
             m.stop()

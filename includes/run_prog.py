@@ -1,10 +1,13 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
 from subprocess import Popen, call, PIPE
 import errno
 from types import *
 import logging
 import sys
 
-logging.basicConfig(level=logging.DEBUG)
+#TODO: Implement timeout mechansim
 
 def run_program(rcmd):
     """

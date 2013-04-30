@@ -7,10 +7,12 @@ import os
 import random
 import string
 import sys
-from flask import Flask, request, Response
+from flask import Flask, request, Response, abort
 from functools import wraps
 from sqlalchemy import create_engine, MetaData, Table, Column, String,\
                        select, and_, Integer
+from collections import deque
+
 
 logging.basicConfig(level=logging.DEBUG, filename='snoopy_server.log',
                     format='%(asctime)s %(levelname)s %(filename)s: %(message)s',
@@ -118,6 +120,10 @@ class Webserver(object):
             else:
                return True
 
+    def verify_admin(self, user, pwd):
+        if user == "potato" and pwd == "fl0atb0at":
+            return True
+
     def verify_account(self, _drone, _key):
         try:
             drone_table=self.tables['drones']
@@ -141,6 +147,16 @@ class Webserver(object):
         'Could not verify your access level for that URL.\n'
         'You have to login with proper credentials', 401,
         {'WWW-Authenticate': 'Basic realm="Login Required"'})
+
+    def requires_admin_auth(self,f):
+        @wraps(f)
+        def decorated(*args, **kwargs):
+            auth = request.authorization
+            if not auth or not self.verify_admin(auth.username, auth.password):
+                return self.authenticate()
+            return f(*args, **kwargs)
+        return decorated
+
     
     def requires_auth(self,f):
         @wraps(f)
@@ -162,42 +178,64 @@ class Webserver(object):
     def run_webserver(self, path, srv_port):
         app = Flask(__name__)
 
-        #ToDo: Would it be better to post result of commands here, instead of through the sunc sync?
-        @app.route(path + "cmd_result")
+        #Command shell variables
+        self.pendingCommands = {}
+        self.newResponses = {}
+
+        @app.route('/cmd/droneResponse')
         @self.requires_auth
-        def command_result():
-            _drone = auth = request.authorization.username
-            jsdata = self.unpack_data(request)
-            if 'cmd_id' in jsdata and 'command' in jsdata and 'result' in jsdata:
-                #self.tables['commands'].update.()
-                return "Thanks for the command output"
+        def drone_response():
+            drone = auth = request.authorization.username
+            if 'command' not in request.args or 'output' not in request.args:
+                abort(400)
             else:
-                logging.error("Bad JSON from %s: '%s'" %(_drone, str(jsdata)))
-                return "Error"
-
-
-        @app.route(path + "cmd_check")
+                command, output = request.args['command'], request.args['output']
+                if drone not in self.newResponses:
+                    self.newResponses[drone] = deque([(command,output)])
+                else:
+                    self.newResponses[drone].append((command,output))
+                logging.info(self.newResponses)
+                return "Thank you, kind sir."
+        
+        @app.route('/cmd/droneQuery')
         @self.requires_auth
-        def please_run_command():
-            try:
-                _drone = auth = request.authorization.username
-                command_table=self.tables['commands']
-                s = select([command_table],
-                           and_(command_table.c.drone==_drone, command_table.c.has_run==0))
-                result = self.db.execute(s).fetchone()
-                
-
-                if result:
-                    s = command_table.update().where(command_table.c.id == result[0]).values(has_run=1).execute()
-                    #logging.info(s)
-                    return json.dumps({'id' : result[0], 'command' : result[2], 'drone':result[1]})
-                    #return "Please run command %s" %result[2]
+        def drone_query():
+            _drone = auth = request.authorization.username
+            if _drone in self.pendingCommands and self.pendingCommands[_drone]:
+                return self.pendingCommands[_drone].popleft()
+            else:
+                return ""
+        
+        @app.route('/cmd/serverGetResponse')
+        @self.requires_admin_auth
+        def server_get_response():
+            if 'drone' not in request.args:
+                return "Please specify 'drone' parameter"
+            else:
+                drone = request.args['drone']
+                if drone in self.newResponses and self.newResponses[drone]:
+                    command, output = self.newResponses[drone].popleft()
+                    resp = "[%s] %s\n%s" %(drone, command, output)
+                    return Response(resp, mimetype="text/plain")
                 else:
                     return ""
-            except Exception:
-                logging.exception('Error:')
+                
+        @app.route('/cmd/serverAddCommand')
+        @self.requires_admin_auth
+        def server_add_command():
+            if 'command' not in request.args or 'drone' not in request.args:
+                return "Please specify 'command' and 'drone' parameters"
+            else:
+                command, drone = request.args['command'], request.args['drone']
+                if drone not in self.pendingCommands:
+                    self.pendingCommands[drone] = deque([command])
+                else:
+                    self.pendingCommands[drone].append(command)
+                logging.info(self.pendingCommands)
+                return "Sending command '%s' to '%s'" % (command, drone)
+        
 
-
+        # For the collection of data
         @app.route(path, methods=['POST'])
         @self.requires_auth
         def catch_data():
