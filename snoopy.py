@@ -126,7 +126,7 @@ class Snoopy():
             m = __import__(mod, fromlist="Snoop").Snoop(params)
             mod_start_time = os.times()[4]    #Get a system clock indepdent timer
             m.start()
-            logging.info("[+] Waiting for module '%s' to indicate it's ready" % mod)
+            logging.info("Waiting for module '%s' to indicate it's ready" % mod)
             while not m.is_ready() and (os.times()[4] - mod_start_time) < self.MODULE_START_GRACE_TIME:
                 time.sleep(2)
             if not m.is_ready():

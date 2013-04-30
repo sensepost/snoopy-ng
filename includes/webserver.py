@@ -10,12 +10,13 @@ import sys
 from flask import Flask, request, Response
 from functools import wraps
 from sqlalchemy import create_engine, MetaData, Table, Column, String,\
-                       select, and_
+                       select, and_, Integer
 
 logging.basicConfig(level=logging.DEBUG, filename='snoopy_server.log',
                     format='%(asctime)s %(levelname)s %(filename)s: %(message)s',
                     datefmt='%Y-%m-%d %H:%M:%S')
 
+logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
 
 class Webserver(object):
     def __init__(self, dbms="sqlite:///snoopy.db", path="/", srv_port=9001):
@@ -130,8 +131,8 @@ class Webserver(object):
             else:
                 logging.debug("Access denied for %s" % _drone)
                 return False
-        except Exception:
-            logging.exception('Error:')
+        except Exceptioni, e:
+            logging.exception('Error: %s' %str(e))
             return False
 
     def authenticate(self):
@@ -149,34 +150,65 @@ class Webserver(object):
                 return self.authenticate()
             return f(*args, **kwargs)
         return decorated
+    
+    def unpack_data(self, request):
+        if request.headers['Content-Type'] == 'application/json':
+           try:
+               return json.loads(request.data)
+           except Exception,e:
+               logging.error(e)
 
     #Perhaps make this a module?
     def run_webserver(self, path, srv_port):
         app = Flask(__name__)
 
+        #ToDo: Would it be better to post result of commands here, instead of through the sunc sync?
+        @app.route(path + "cmd_result")
+        @self.requires_auth
+        def command_result():
+            _drone = auth = request.authorization.username
+            jsdata = self.unpack_data(request)
+            if 'cmd_id' in jsdata and 'command' in jsdata and 'result' in jsdata:
+                #self.tables['commands'].update.()
+                return "Thanks for the command output"
+            else:
+                logging.error("Bad JSON from %s: '%s'" %(_drone, str(jsdata)))
+                return "Error"
+
+
+        @app.route(path + "cmd_check")
+        @self.requires_auth
+        def please_run_command():
+            try:
+                _drone = auth = request.authorization.username
+                command_table=self.tables['commands']
+                s = select([command_table],
+                           and_(command_table.c.drone==_drone, command_table.c.has_run==0))
+                result = self.db.execute(s).fetchone()
+                
+
+                if result:
+                    s = command_table.update().where(command_table.c.id == result[0]).values(has_run=1).execute()
+                    #logging.info(s)
+                    return json.dumps({'cmd_id' : result[0], 'cmd' : result[2], 'drone':result[1]})
+                    #return "Please run command %s" %result[2]
+                else:
+                    return ""
+            except Exception:
+                logging.exception('Error:')
+
+
         @app.route(path, methods=['POST'])
         @self.requires_auth
         def catch_data():
-            if request.headers['Content-Type'] == 'application/json':
-                try:
-                    jsdata = json.loads(request.data)
-                    drone, key = None, None
-                    if 'Z-Auth' in request.headers:
-                        key = request.headers['Z-Auth']
-                    if 'Z-Drone' in request.headers:
-                        drone = request.headers['Z-Drone']
+            jsdata = self.unpack_data(request)
+            if jsdata:
+                result = self.write_local_db(jsdata)
 
-                    if self.verify_account(drone, key):
-                        result = self.write_local_db(jsdata)
-
-                        if result:
-                            return '{"result":"success", "reason":"None"}'
-                        else:
-                            return '{"result":"failure", "reason":"Check server logs"}'
-                    else:
-                        return '{"result":"failure","reason":"Access denied"}'
-                except Exception:
-                    logging.exception('Error:')
+                if result:
+                    return '{"result":"success", "reason":"None"}'
+                else:
+                    return '{"result":"failure", "reason":"Check server logs"}'
 
         #app.debug=True
         app.run(host="0.0.0.0",port=srv_port)
