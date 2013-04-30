@@ -16,7 +16,7 @@ logging.basicConfig(level=logging.DEBUG, filename='snoopy_server.log',
                     format='%(asctime)s %(levelname)s %(filename)s: %(message)s',
                     datefmt='%Y-%m-%d %H:%M:%S')
 
-logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
+#logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
 
 class Webserver(object):
     def __init__(self, dbms="sqlite:///snoopy.db", path="/", srv_port=9001):
@@ -190,7 +190,7 @@ class Webserver(object):
                 if result:
                     s = command_table.update().where(command_table.c.id == result[0]).values(has_run=1).execute()
                     #logging.info(s)
-                    return json.dumps({'cmd_id' : result[0], 'cmd' : result[2], 'drone':result[1]})
+                    return json.dumps({'id' : result[0], 'command' : result[2], 'drone':result[1]})
                     #return "Please run command %s" %result[2]
                 else:
                     return ""

@@ -20,7 +20,7 @@ class Snoop(Thread):
 
         self.server = "http://192.168.11.46:9001/" + "cmd_check"
         self.drone = 'beagle2'
-        self.key = '0FUVVGNDTUMHYQ1'
+        self.key = 'AGSPMRHTOYGS6K3'
         self.RUN = True
         self.command_queue = deque()
         Thread.__init__(self)
@@ -37,23 +37,31 @@ class Snoop(Thread):
         base64string = base64.encodestring('%s:%s' % (self.drone, self.key)).replace('\n', '')
         headers = {'content-type': 'application/json',
                    'Authorization':'Basic %s' % base64string}        
-   
+
         try:
+            response = None
             req = urllib2.Request(self.server, headers=headers)
             response = urllib2.urlopen(req)
 
             if response:
-                result = json.loads(response.read())
-                # A bug exists where after receving a new command, it's received again
-                # but with a value of 'None'. Debug it with this:
-                logging.debug("Going to req command '%s'" % result)        
-                if result['cmd'] != None:
-                    outcome = run_program(result['cmd'])
-                    result['result'] = outcome
-                    self.command_queue.append(result)
+                text = response.read()
+                logging.info(text)
+                if text != '':
+                    result = json.loads(text)
+                    logging.info("HERE I AM")
+                    # A bug exists where after receving a new command, it's received again
+                    # but with a value of 'None'. Debug it with this:
+                    logging.info("Going to req command '%s'" % result)        
+                    if result['command'] != None:
+                        outcome = run_program(result['command'])
+                        result['result'] = outcome
+                        result['has_run'] = 1
+                        self.command_queue.append(result)
         except ValueError:
             """Blank response, no new commands"""
             pass
+        except Exception, e:
+            logging.error(e)
 #        except Exception, e:
 #            logging.error(e)
 
@@ -75,6 +83,7 @@ class Snoop(Thread):
 
     def get_data(self):
         """Ensure data is returned in the form of a SQL row."""
+        #return []
         if self.command_queue:
        	    return [("commands", [self.command_queue.pop()])]
         else:
