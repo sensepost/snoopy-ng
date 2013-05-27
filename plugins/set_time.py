@@ -25,7 +25,7 @@ class Snoop(Thread):
 
     def set_time(self):
         clock_attempts=5
-        success = run_program('ntpdate',['ntp.ubuntu.com'])
+        success = run_program('ntpdate ntp.ubuntu.com')
         while not success and clock_attempts > 0:
             logging.info("Failed to set system clock. Will try %d more times before giving up" %clock_attempts)
             clock_attempts-=1
