@@ -15,10 +15,10 @@ class Snoop(Thread):
         self.RUN = True
 
     def run(self):
-        sleeps = 3600
+        sleeps = 600
         while self.RUN:
-            if sleeps >= 3600:
-                self.set_time()    #Check every hour
+            if sleeps >= 600:
+                self.set_time()    #Check every ten mins
                 sleeps = 0
             time.sleep(1)
             sleeps+=1

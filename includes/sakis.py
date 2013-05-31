@@ -7,6 +7,7 @@ import time
 import sys
 import os
 import logging
+from run_prog import run_program
 
 if os.geteuid() != 0:
     exit("Please run me with root privilages")
@@ -55,11 +56,13 @@ class Sakis(Thread):
                 time.sleep(2)
                 if self.status() == "Connected":
                     logging.info("Successfully connected to '%s'" % self.apn)
+                    run_program("ntpdate ntp.ubuntu.com")
                 else:
                     logging.info("Could not connect to '%s'. Will try again in 5 seconds" % self.apn)
             else:
                 if not sawMessage:
                     logging.info("Modem is online.")
+                    run_program("ntpdate ntp.ubuntu.com")
                     sawMessage = True
             time.sleep(5)
     
