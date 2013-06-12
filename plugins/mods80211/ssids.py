@@ -6,7 +6,10 @@ import re
 from sqlalchemy import MetaData, Table, Column, Integer, String, Unicode
 logging.getLogger("scapy.runtime").setLevel(logging.ERROR)
 from scapy.all import Dot11ProbeReq, Dot11Elt
+from base64 import b64encode
 
+#N.B If you change b64mode to False, you should probably change
+# the ssid colum to type Unicode.
 b64mode = True
 
 class Snarf():
@@ -20,7 +23,7 @@ class Snarf():
         """Make sure to define your table here"""
         table = Table('ssids', MetaData(),
                       Column('device_mac', String(12), primary_key=True),
-                      Column('ssid', Unicode(100), primary_key=True, autoincrement=False),
+                      Column('ssid', String(100), primary_key=True, autoincrement=False),
                       Column('sunc', Integer, default=0))
         return [table]
 

@@ -11,6 +11,8 @@ import includes.monitor_mode as mm
 #import includes.LogManager
 logging.getLogger("scapy.runtime").setLevel(logging.ERROR)
 from scapy.all import sniff, Dot11Elt, Dot11ProbeReq
+from collections import deque
+import time
 #logging.basicConfig(level=logging.DEBUG,format='%(asctime)s %(levelname)s %(filename)s: %(message)s',datefmt='%Y-%m-%d %H:%M:%S')
 
 class Snoop(Thread):
@@ -23,6 +25,8 @@ class Snoop(Thread):
     def __init__(self, **kwargs):
         self.sniffErrors = 0    # Number of times scapy has failed
         self.ready_status = False
+        self.packet_queue = deque(maxlen=1000000)
+        self.packet_buffer_size=10000 #Number of packets to pop to each module from the queue
 
         # Process arguments passed to module
         self.iface = kwargs.get('iface',None)
@@ -108,11 +112,26 @@ class Snoop(Thread):
         return self.STOP_SNIFFING
 
     def packeteer(self, p):
+        """In the interest of thread safety, we now do this sequentially."""
         # Give the packet to each module
-        for m in self.modules:
-            m.proc_packet(p)
+        #for m in self.modules:
+        #    m.proc_packet(p)
+        self.packet_queue.append(p)
 
     def get_data(self):
+        #First we pop N packets from the packet queue and pass them to each module
+        for i in range(self.packet_buffer_size):
+            try:
+                packet = self.packet_queue.popleft()
+                for m in self.modules:
+                    m.proc_packet(packet)
+            except IndexError:
+                break
+
+        time.sleep(0.2) #Give each module some time to process the packets
+
+        #Then we query each module for any data they may have constructed from the
+        #   received packets
         data_to_return = []
         for m in self.modules:
             data = m.get_data()
