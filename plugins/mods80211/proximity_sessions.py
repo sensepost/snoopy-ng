@@ -25,7 +25,7 @@ class Snarf():
         """Make sure to define your table here"""
         table = Table('proximity_sessions', MetaData(),
                       Column('mac', String(12), primary_key=True),
-                      Column('first_obs', Integer, primary_key=True),
+                      Column('first_obs', Integer, primary_key=True, autoincrement=False),
                       Column('last_obs', Integer),
                       Column('num_probes', Integer),
                       Column('sunc', Integer, default=0))

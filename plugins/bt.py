@@ -70,7 +70,7 @@ class Snoop(Thread):
         """Make sure to define your table here"""
         table = Table('bluetooth', MetaData(),
                            Column('mac', String(12), primary_key=True),
-                           Column('name', Unicode, primary_key=True),
+                           Column('name', Unicode(100), primary_key=True),
                            Column('sunc', Integer, default=0))
 
 

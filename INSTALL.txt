@@ -11,6 +11,9 @@ tar xzf dpkt-1.7.tar.gz
 cd dpkt-1.7/
 python setup.py install
 
+#apache
+apt-get install libapache2-mod-wsgi
+
 # bt.py module
 apt-get install python-bluez
 

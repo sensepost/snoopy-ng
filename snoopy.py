@@ -17,7 +17,7 @@ import string
 import random
 #CommandShell
 from includes.command_shell import CommandShell
-
+import includes.common
 
 #Set path
 snoopyPath=os.path.dirname(os.path.realpath(__file__))
@@ -164,7 +164,8 @@ class Snoopy():
                         if not os.path.basename(f).startswith('__') ]
 
     def go(self):
-        self.cmdShell.start() #Start command shell
+        if self.server != "local":
+            self.cmdShell.start() #Start command shell
         last_update = 0
         while self.run:
             self.get_data()
@@ -177,7 +178,8 @@ class Snoopy():
             time.sleep(1) #Delay between checking threads for new data
 
     def stop(self):
-        self.cmdShell.stop()
+        if self.server != "local":
+            self.cmdShell.stop()
         self.run = False
         for m in self.modules:
             m.stop()
@@ -288,7 +290,7 @@ class Snoopy():
 
 def main():
     print "Snoopy V0.2. glenn@sensepost.com\n"
-    usage = """Usage: %prog [--client <http://sync_server:port> | --server <listen_port>] [--dbms <database>] [--module <module[:params]>] [<client options> | <server options>]"""
+    usage = """Usage: %prog [--client <http://sync_server:port> | --server ] [--dbms <database>] [--module <module[:params]>] [<client options> | <server options>]"""
     parser = OptionParser(usage=usage)
     #Client options
     group_c = OptionGroup(parser, "Client Options")
@@ -306,7 +308,7 @@ def main():
     #Server options
     group_s = OptionGroup(parser, "Server Options")
 
-    parser.add_option("-s", "--server", dest="server_port", type="int", action="store", help="Run Snoopy sync server component on specified port.")
+    parser.add_option("-s", "--server", dest="server_mode", action="store_true", help="Run Snoopy sync server. Define options in includes/webserverOptions.py")
     parser.add_option("-p", "--path", dest="server_path", action="store", default="/", help="Run Snoopy sync server component from web path (default '/')")
     group_s.add_option("-n", "--new_drone", dest="newdrone", action="store", help="Create a new drone account, supplying the name. Will output a key to be used by client.")
     group_s.add_option("-e", "--erase_drone", dest="deldrone", action="store", help="Delete a drone account by its name.")
@@ -339,9 +341,9 @@ def main():
     if options.newdrone:
         print "[+] Creating new Snoopy server sync account"
         import includes.webserver
-        key = includes.webserver.Webserver.manage_drone_account(options.newdrone,
-                                                                "create",
-                                                                options.dbms)
+        key = includes.webserver.manage_drone_account(options.newdrone,
+                                                                "create")
+                                                                
         print "[+] Key for '%s' is '%s'" % (options.newdrone, key)
         print "[+] Use this value in client mode to sync data to a remote server. e.g:"
         print ("    %s --client http://remote-server/ --drone %s --key %s "
@@ -351,21 +353,19 @@ def main():
     elif options.deldrone:
         import includes.webserver
         print "[+] Deleting drone account '%s'" % options.deldrone
-        includes.webserver.Webserver.manage_drone_account(options.deldrone,
-                                                          "delete",
-                                                          options.dbms)
+        includes.webserver.manage_drone_account(options.deldrone,
+                                                          "delete")
         sys.exit(0)
     elif options.listdrones:
         import includes.webserver
         print "[+] Available drone accounts:"
-        drones = includes.webserver.Webserver.manage_drone_account(1, "list",
-                                                                   options.dbms)
+        drones = includes.webserver.manage_drone_account(1, "list")
         for d in drones:
             print "\t%s:%s" % (d[0], d[1])
         sys.exit(0)
 
-    if (options.sync_server is not None and options.server_port is not None) or \
-            (options.sync_server is None and options.server_port is None):
+    if (options.sync_server is not None and options.server_mode ) or \
+            (options.sync_server is None and options.server_mode is None):
         logging.error("No options specified. Try -h for help.")
         sys.exit(-1)
 
@@ -407,12 +407,9 @@ def main():
 
     #Server mode
     else:
-        logging.info ("[+] Starting Snoopy sync web server. "
-               "Listening on port '%d' with sync web path '%s'" % \
-              (options.server_port, options.server_path))
+        logging.info ("Starting Snoopy sync web server with options from webserverOptions.py")
         import includes.webserver
-        includes.webserver.Webserver(options.dbms,
-                                     options.server_path, options.server_port)
+        includes.webserver.run_webserver()
 
 if __name__ == "__main__":
     main()
