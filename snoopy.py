@@ -196,7 +196,7 @@ class Snoopy():
     def write_local_db(self):
         """Write local sqlite db"""
         for tbl, data in self.all_data.iteritems():
-            try:
+            try: #WTF is this? Fix it.
                 if tbl in self.ident_tables:
                     for d in data:
                         d['drone'] = self.drone

@@ -12,7 +12,7 @@ logging.basicConfig(level=logging.DEBUG,
 
 
 class Snoop(Thread):
-    def __init__(self, *kwargs):
+    def __init__(self, **kwargs):
         Thread.__init__(self)
         self.RUN = True
         self.username=''

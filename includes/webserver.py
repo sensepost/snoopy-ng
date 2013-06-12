@@ -13,9 +13,11 @@ from sqlalchemy import create_engine, MetaData, Table, Column, String,\
                    select, and_, Integer
 from collections import deque
 from sqlalchemy.exc import *
-current_dir=os.path.dirname(os.path.realpath(__file__))
 from webserverOptions import *
 import includes.common
+
+os.chdir(os.path.dirname(os.path.realpath(__file__)))
+os.chdir('..')
 
 logging.basicConfig(level=logging.DEBUG, filename='/tmp/snoopy_server.log',
                 format='%(asctime)s %(levelname)s %(filename)s: %(message)s',
@@ -24,7 +26,7 @@ logging.basicConfig(level=logging.DEBUG, filename='/tmp/snoopy_server.log',
 #logging.basicConfig()
 #logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
 
-logging.debug("Starting webserver")
+logging.debug("Loading webserver code")
 
 app = Flask(__name__)
 db = create_engine(dbms)
@@ -217,6 +219,7 @@ def catch_data():
 
 def create_db_tables():
 
+    logging.debug("Creating tables")
     ident_tables = []
     moduleNames = [ "plugins." + os.path.basename(f)[:-3]
                     for f in glob.glob("./plugins/*.py")
@@ -226,7 +229,8 @@ def create_db_tables():
     tbls.append(drone_tbl_def)
 
     for mod in moduleNames:
-        m = __import__(mod, fromlist="Snoop").Snoop#()
+        logging.debug("Loading tables for %s" % mod)
+        m = __import__(mod, fromlist="Snoop").Snoop()
         for ident in m.get_ident_tables():
             if ident is not None:
                 ident_tables.append(ident)
@@ -242,6 +246,7 @@ def create_db_tables():
             tbl.append_column( Column('location', String(length=60)) )
             tbl.append_column( Column('run_id', String(length=11)) )
         if tbl.name not in metadata.tables.keys():
+            logging.debug("Creating table %s" % tbl.name)
             tbl.create()
             metadata.reflect()
 

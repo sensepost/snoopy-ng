@@ -13,7 +13,7 @@ class Snoop(Thread):
     DELTA_PROX = 300
     """Proximity session duration, before starting a new one"""
 
-    def __init__(self, *kwargs):
+    def __init__(self, **kwargs):
         Thread.__init__(self)
         self.RUN = True
         self.device_ssids = {}
