@@ -30,8 +30,14 @@ class Snoop(Thread):
 
         # Process arguments passed to module
         self.iface = kwargs.get('iface',None)
-        self.enable_monitor_mode = kwargs.get('mon',False)
+        self.enable_monitor_mode = kwargs.get('mon',"False")
         self.bfilter = kwargs.get('filter',"")
+        self.hash_macs = kwargs.get('hash',"False")
+
+        if self.enable_monitor_mode == "False":
+            self.enable_monitor_mode = False
+        else:
+            self.enable_monitor_mode = True
 
         Thread.__init__(self)
         self.setName('c80211')
@@ -39,7 +45,7 @@ class Snoop(Thread):
 
         self.modules = []
         for m in Snoop.get_modules():
-            self.modules.append(__import__(m, fromlist=['Snarf']).Snarf())
+            self.modules.append(__import__(m, fromlist=['Snarf']).Snarf(hash_macs=self.hash_macs))
 
     @staticmethod
     def get_modules():
@@ -58,7 +64,7 @@ class Snoop(Thread):
     @staticmethod
     def get_parameter_list():
         #TODO: "<proximity_delta> - time between observataions to group proximity sessions (e.g. -m:c80211:mon0,60")
-        return ["iface=<dev> - interface to listen on. (e.g. -m c80211:iface=wlan3)","mon=[True|False] - Enable monitor mode on <dev> (e.g. -m c80211:iface=wlan3,mon=True","filter=<bpf> - Filter to apply. (e.g. -mc c80211:filter='foobar'"]
+        return ["iface=<dev> - interface to listen on. (e.g. -m c80211:iface=wlan3)","mon=[True|False] - Enable monitor mode on <dev> (e.g. -m c80211:iface=wlan3,mon=True","filter=<bpf> - Filter to apply. (e.g. -mc c80211:filter='foobar'","hash=[True|False} - Hash MAC addresses"]
 
     @staticmethod
     def get_ident_tables():

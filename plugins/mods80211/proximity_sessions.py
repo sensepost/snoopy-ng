@@ -5,7 +5,7 @@ import collections
 import logging
 import re
 from sqlalchemy import MetaData, Table, Column, String, Integer
-
+from includes.common import snoop_hash
 logging.getLogger("scapy.runtime").setLevel(logging.ERROR)
 from scapy.all import Dot11ProbeReq
 
@@ -15,16 +15,16 @@ class Snarf():
     DELTA_PROX = 300
     """Proximity session duration, before starting a new one."""
 
-    def __init__(self):
+    def __init__(self,hash_macs="False"):
         self.current_proximity_sessions = {}
         self.closed_proximity_sessions = collections.deque()
         self.MOST_RECENT_TIME = 0
-
+        self.hash_macs = hash_macs
     @staticmethod
     def get_tables():
         """Make sure to define your table here"""
         table = Table('proximity_sessions', MetaData(),
-                      Column('mac', String(12), primary_key=True),
+                      Column('mac', String(64), primary_key=True), #Len 64 for sha256
                       Column('first_obs', Integer, primary_key=True, autoincrement=False),
                       Column('last_obs', Integer),
                       Column('num_probes', Integer),
@@ -36,6 +36,8 @@ class Snarf():
         if not p.haslayer(Dot11ProbeReq):
             return
         mac = re.sub(':', '', p.addr2)
+        if self.hash_macs == "True":
+            mac = snoop_hash(mac)
         t = int(p.time)
         # New
         if mac not in self.current_proximity_sessions:
