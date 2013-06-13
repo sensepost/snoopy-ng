@@ -84,8 +84,7 @@ def write_local_db(rawdata):
         except Exception,e:
              logging.exception(e)
              return False
-        else:
-             return True
+    return True
 
 def verify_admin(user, pwd):
     if user == "potato" and pwd == "fl0atb0at":
