@@ -1,17 +1,42 @@
+# Set time
+ntpdate ntp.ubuntu.com
+
 # c80211_pycap.py module
 apt-get install python2.7-dev
 apt-get install libpcap0.8-dev
+
 wget http://switch.dl.sourceforge.net/project/pylibpcap/pylibpcap/0.6.4/pylibpcap-0.6.4.tar.gz
 tar xzf pylibpcap-0.6.4.tar.gz
 cd pylibpcap-0.6.4
 python setup.py install
-easy_install dpkt
-wget https://dpkt.googlecode.com/files/dpkt-1.7.tar.gz
-tar xzf dpkt-1.7.tar.gz 
-cd dpkt-1.7/
-python setup.py install
+cd ..
 
-#apache
+wget http://dpkt.googlecode.com/files/dpkt-1.8.tar.gz
+tar xzf dpkt-1.8.tar.gz 
+cd dpkt-1.8
+python setup.py install
+cd ..
+
+apt-get install python-sqlalchemy
+apt-get install ppp
+apt-get install tcpdump
+apt-get install python-serial
+apt-get install sqlite3
+
+cp ./includes/sakis3g /usr/local/bin
+
+#aircrack
+apt-get install build-essential
+wget http://download.aircrack-ng.org/aircrack-ng-1.2-beta1.tar.gz
+tar xzf aircrack-ng-1.2-beta1.tar.gz
+cd aircrack-ng-1.2-beta1 
+make
+make install
+apt-get install iw
+
+#upstart files + sakis
+...
+#apache - server
 apt-get install libapache2-mod-wsgi
 
 # bt.py module

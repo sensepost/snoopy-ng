@@ -46,9 +46,13 @@ class Snoopy():
 
     def __init__(self, _modules, dbms="sqlite:///snoopy.db",
                  server="http://localhost:9001/", drone="unnamedDrone",
-                 key=None, location="unknownLocation"):
+                 key=None, location="unknownLocation", cmdShell=True):
         #moduleNames = ["plugins."+ x for x in moduleNames]
         #local data
+        self.doCmdShell=False
+        if cmdShell:
+            logging.debug("Running cmdshell!")
+            self.doCmdShell=True
         self.all_data = {}
         self.run = True
         self.server = server
@@ -58,7 +62,8 @@ class Snoopy():
         self.run_id = ''.join(random.choice(string.ascii_uppercase + string.digits)
                               for x in range(10))
         #Command Shell
-        self.cmdShell = CommandShell(self.server, self.drone, self.key)
+        if self.doCmdShell:
+            self.cmdShell = CommandShell(self.server, self.drone, self.key)
 
         #Database
         self.tables = {}
@@ -164,7 +169,7 @@ class Snoopy():
                         if not os.path.basename(f).startswith('__') ]
 
     def go(self):
-        if self.server != "local":
+        if self.server != "local" and self.doCmdShell:
             self.cmdShell.start() #Start command shell
         last_update = 0
         while self.run:
@@ -178,7 +183,7 @@ class Snoopy():
             time.sleep(1) #Delay between checking threads for new data
 
     def stop(self):
-        if self.server != "local":
+        if self.server != "local" and self.doCmdShell:
             self.cmdShell.stop()
         self.run = False
         for m in self.modules:
@@ -302,6 +307,7 @@ def main():
     group_c.add_option("-d", "--drone", dest="drone", action="store", help="Specify the name of your drone.")
     group_c.add_option("-k", "--key", dest="key", action="store", help="Specify key for drone name supplied.")
     group_c.add_option("-l", "--location", dest="location", action="store", help="Specify the location of your drone.")
+    parser.add_option("-r", "--shell", dest="cmd_shell", action="store_true", help="Run command shell for remote administration of drone.")
 
     #parser.add_option("-", "--", dest="", action="store_true", help="")
 
@@ -403,7 +409,7 @@ def main():
             newmods.append({'name':'plugins.'+name, 'params':params})
 
         Snoopy(newmods, options.dbms, options.sync_server, options.drone,
-               options.key, options.location)
+               options.key, options.location, options.cmd_shell)
 
     #Server mode
     else:
