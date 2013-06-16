@@ -41,8 +41,8 @@ def set_sensor_id():
 
 @app.route('/poweroff')
 def po():
-    return "Powering down..."
     stdin,stdout = os.popen2("poweroff")
+    return "Powering down..."
 
 @app.route('/restart_snoopy')
 def rs():

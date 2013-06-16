@@ -13,7 +13,7 @@ class Snoop(Thread):
         Thread.__init__(self)
         self.RUN = True
         self.last_heartbeat = 0
-        self.heartbeat_freq = 60 # Check system every n seconds
+        self.heartbeat_freq = 60*30 # Check system every n seconds
         self.drone = kwargs.get('drone',"no_drone_name_supplied")
         self.system_statuses = []
 
