@@ -33,7 +33,7 @@ class Snoop(Thread):
 
     def get_data(self):
         """Ensure data is returned in the form of a SQL row."""
-        now = int(time.time())
+        now = int(os.times()[4])
         if now > self.last_heartbeat + self.heartbeat_freq:
             logging.debug("Heartbeat")
             self.last_heartbeat = now

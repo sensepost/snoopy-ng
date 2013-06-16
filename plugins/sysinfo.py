@@ -42,7 +42,8 @@ class Snoop(Thread):
 
     def run(self):
         while self.RUN:
-            now = int(time.time())
+            #now = int(time.time())
+            now = int(os.times()[4])
             if now > self.last_heartbeat + self.heartbeat_freq:
                 logging.debug("Checking system status")
                 self.last_heartbeat = now

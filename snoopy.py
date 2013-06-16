@@ -176,7 +176,8 @@ class Snoopy():
         while self.run:
             self.get_data()
             self.write_local_db()
-            now = time.time()
+            #now = time.time() #Unsafe when ntp is changing time
+            now = int(os.times()[4])
             if now - last_update > self.SYNC_FREQ:
                 last_update = now
                 if self.server != "local":
