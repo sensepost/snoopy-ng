@@ -8,16 +8,19 @@ logging.getLogger("scapy.runtime").setLevel(logging.ERROR)
 from scapy.all import Dot11ProbeReq, Dot11Elt
 from base64 import b64encode
 from includes.common import snoop_hash
+from collections import OrderedDict
 
 #N.B If you change b64mode to False, you should probably change
 # the ssid colum to type Unicode.
 b64mode = True
 
+MAX_NUM_SSIDs = 1000 #Maximum number of mac:ssid pairs to keep in memory
+
 class Snarf():
     """SSID processor."""
 
     def __init__(self,hash_macs="False"):
-        self.device_ssids = {}
+        self.device_ssids = OrderedDict()
         self.hash_macs = hash_macs
 
     @staticmethod
@@ -48,6 +51,16 @@ class Snarf():
             if v == 0:
                 tmp.append( {"mac": k[0], "ssid": k[1]} )
                 todel.append((k[0], k[1]))
+
+        # Reduce mac:ssid data structure if it's getting too large
+        if len(self.device_ssids) > MAX_NUM_SSIDs:
+            logging.debug("MAC:SSID structure is large (%d), going to reduce by 50pc (-%d)" % (len(self.device_ssids),(int(0.5*MAX_NUM_SSIDs))))
+            for i in range(int(0.5 * MAX_NUM_SSIDs)):
+                try:
+                    self.device_ssids.popitem(last = False)
+                except KeyError:
+                    pass
+            logging.debug("MAC:SSID structure is now %d" % len(self.device_ssids))
 
         if len(todel) > 0:
             for foo in todel:

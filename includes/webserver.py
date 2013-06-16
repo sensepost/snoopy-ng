@@ -99,7 +99,7 @@ def verify_account(_drone, _key):
         result = db.execute(s).fetchone()
 
         if result:
-            logging.debug("Auth granted for %s" % _drone)
+            #logging.debug("Auth granted for %s" % _drone)
             return True
         else:
             logging.debug("Access denied for %s" % _drone)

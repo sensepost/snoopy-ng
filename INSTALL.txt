@@ -1,5 +1,9 @@
 # Set time
 ntpdate ntp.ubuntu.com
+echo "Europe/London" > /etc/timezone
+dpkg-reconfigure -f noninteractive tzdata
+
+apt-get install python-psutil
 
 # c80211_pycap.py module
 apt-get install python2.7-dev
@@ -22,6 +26,7 @@ apt-get install ppp
 apt-get install tcpdump
 apt-get install python-serial
 apt-get install sqlite3
+apt-get install python-requests
 
 cp ./includes/sakis3g /usr/local/bin
 
@@ -34,10 +39,6 @@ make
 make install
 apt-get install iw
 
-#upstart files + sakis
-...
-#apache - server
-apt-get install libapache2-mod-wsgi
 
 # bt.py module
 apt-get install python-bluez

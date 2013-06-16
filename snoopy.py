@@ -46,7 +46,7 @@ class Snoopy():
 
     def __init__(self, _modules, dbms="sqlite:///snoopy.db",
                  server="http://localhost:9001/", drone="unnamedDrone",
-                 key=None, location="unknownLocation", cmdShell=True):
+                 key=None, location="unknownLocation", cmdShell=True, flush_local_data_after_sync=False):
         #moduleNames = ["plugins."+ x for x in moduleNames]
         #local data
         self.doCmdShell=False
@@ -61,6 +61,7 @@ class Snoopy():
         self.key = key
         self.run_id = ''.join(random.choice(string.ascii_uppercase + string.digits)
                               for x in range(10))
+        self.flush_local_data_after_sync = flush_local_data_after_sync
         #Command Shell
         if self.doCmdShell:
             self.cmdShell = CommandShell(self.server, self.drone, self.key)
@@ -242,11 +243,15 @@ class Snoopy():
 
             # If web sync was successful, mark local db as sunc
             if sync_success:
-                logging.debug("Successfully sync'd %d rows of data :)" %
-                              total_rows_to_upload)
+                #logging.debug("Successfully sync'd %d rows of data :)" %
+                #              total_rows_to_upload)
                 for table_name in self.tables: #self.metadata.sorted_tables:
                     table = self.tables[table_name]
                     if "sunc" in table.c:
+                            #logging.debug("Flushing local data storage")
+                            #self.db.execute("DELETE FROM {0}".format(table_name))
+                            numdel = table.delete().execute()
+                    else:
                         upd = table.update(values={table.c.sunc:1})
                         upd.execute()
             else:
@@ -308,6 +313,7 @@ def main():
     group_c.add_option("-k", "--key", dest="key", action="store", help="Specify key for drone name supplied.")
     group_c.add_option("-l", "--location", dest="location", action="store", help="Specify the location of your drone.")
     parser.add_option("-r", "--shell", dest="cmd_shell", action="store_true", help="Run command shell for remote administration of drone.")
+    parser.add_option("-f", "--flush", dest="flush", action="store_true", help="Flush local database after syncronizing with remote server. Default is to keep a local copy.")
 
     #parser.add_option("-", "--", dest="", action="store_true", help="")
 
@@ -409,7 +415,7 @@ def main():
             newmods.append({'name':'plugins.'+name, 'params':params})
 
         Snoopy(newmods, options.dbms, options.sync_server, options.drone,
-               options.key, options.location, options.cmd_shell)
+               options.key, options.location, options.cmd_shell, options.flush)
 
     #Server mode
     else:
