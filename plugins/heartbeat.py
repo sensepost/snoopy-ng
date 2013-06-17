@@ -37,7 +37,7 @@ class Snoop(Thread):
         now = int(os.times()[4])
         if now > self.last_heartbeat + self.heartbeat_freq:
             timestamp = int(time.time())
-            logging.debug("Heartbeat - %d" timestamp)
+            #logging.debug("Heartbeat - %d" % timestamp)
             self.last_heartbeat = now
             return [('heartbeat',[{'drone':self.drone,'timestamp':timestamp}])]
         else:

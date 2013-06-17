@@ -10,7 +10,7 @@ from includes.common import snoop_hash
 from includes.mac_vendor import mac_vendor
 from collections import OrderedDict
 
-MAX_NUM_VENDORS = 100
+MAX_NUM_VENDORS = 1000
 
 class Snarf():
     """Lookup vendor"""

@@ -5,7 +5,7 @@ echo "Please make sure you're running this from /home/ubuntu/snoopy_ng"
 
 echo "Installing packages and required software"
 read -p "Press any key to continue"
-bash INSTALL.txt
+bash INSTALL.sh
 
 echo "Setting eth0 to static IP address of 192.168.100.13 (only to reflect on reboot)"
 
@@ -20,8 +20,10 @@ netmask 255.255.255.0
 
 EOL
 
+echo "Copying cronjob auto rebooter (every day at 3am)"
+cp ./setup/cron/rebooter /etc/cron.d/
 echo "Copying upstarts"
-cp /home/ubuntu/snoopy_ng/setup/upstarts/*.conf /etc/init/
+cp /home/ubuntu/snoopy_ng/setup/upstarts/* /etc/init/
 echo "Starting Sensor ID config page"
 service drone_config start
 

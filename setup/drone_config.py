@@ -4,6 +4,7 @@ app = Flask(__name__)
 
 snoopyPath=os.path.dirname(os.path.realpath(__file__))
 os.chdir(snoopyPath)
+settings_file="/etc/init/SETTINGS"
 
 @app.route('/')
 def m():
@@ -11,7 +12,10 @@ def m():
 
 @app.route('/get_config')
 def gc():
-    lines=open('./upstarts/SETTINGS', 'r').read()
+    try:
+        lines=open(settings_file, 'r').read()
+    except:
+        return "Unable to open %s. Have you copied the upstart scripts over yet?" % settings_file
     return Response(lines, mimetype='text')
 
 @app.route('/set_sensor_id')
@@ -24,17 +28,16 @@ def set_sensor_id():
     except:
         return "Please pass sensor_id *number* as a GET paramter to set it. e.g. /set_sensor_id/?id=101"
     newlines=[]    
-    lines=open('./upstarts/SETTINGS', 'r').readlines()
+
+    lines=open(settings_file, 'r').readlines()
     for line in lines:
         line=line.strip()
-        if line.startswith("drone="):
-            line = "drone=sensor%s" % sensor_id
-        elif line.startswith("drone_num="):
+        if line.startswith("drone_num="):
             line = "drone_num=%s" % sensor_id
         elif line.startswith("remote_base_port="):
             base_port=int(line[17:])
         newlines.append(line)
-    f=open('./upstarts/SETTINGS', 'w')
+    f=open(settings_file, 'w')
     for line in newlines:
         print>>f, line
     return "Set sensor_id to 'sensor%s', and remote SSH listening port to %d"%(sensor_id,base_port+sensor_id)

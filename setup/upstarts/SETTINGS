@@ -2,7 +2,7 @@ drone_num=99
 sync_server=https://176.58.114.62
 sync_port=8080
 snoopy_path=/home/ubuntu/snoopy_ng/
-drone=sensor99
+drone=sensor$drone_num
 key=RNM8PWH4ET4BCUV
 location=airport
 
