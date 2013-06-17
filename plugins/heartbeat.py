@@ -5,6 +5,7 @@ import logging
 import sqlalchemy as sa
 from threading import Thread
 import time
+import os
 #logging.basicConfig(level=logging.DEBUG)
 
 class Snoop(Thread):
@@ -35,9 +36,10 @@ class Snoop(Thread):
         """Ensure data is returned in the form of a SQL row."""
         now = int(os.times()[4])
         if now > self.last_heartbeat + self.heartbeat_freq:
-            logging.debug("Heartbeat")
+            timestamp = int(time.time())
+            logging.debug("Heartbeat - %d" timestamp)
             self.last_heartbeat = now
-            return [('heartbeat',[{'drone':self.drone,'timestamp':now}])]
+            return [('heartbeat',[{'drone':self.drone,'timestamp':timestamp}])]
         else:
             return []
 

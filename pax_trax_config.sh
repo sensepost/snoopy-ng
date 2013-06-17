@@ -9,8 +9,7 @@ bash INSTALL.txt
 
 echo "Setting eth0 to static IP address of 192.168.100.13 (only to reflect on reboot)"
 
-cat > /etc/network/interface << EOL
-cat > interface << EOL
+cat > /etc/network/interfaces << EOL
 auto lo
 iface lo inet loopback
 
@@ -24,7 +23,7 @@ EOL
 echo "Copying upstarts"
 cp /home/ubuntu/snoopy_ng/setup/upstarts/*.conf /etc/init/
 echo "Starting Sensor ID config page"
-service_start drone_config
+service drone_config start
 
-echo "Please go to "http://<this_device_ip>:5000/set_sensor_id?id=<set_number_here>
+echo "Please go to http://this_device_ip:5000/set_sensor_id?id=set_number_here"
 echo "After doing so, reboot, and data should appear in the remote database"

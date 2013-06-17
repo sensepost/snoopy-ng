@@ -6,6 +6,7 @@ import sqlalchemy as sa
 from threading import Thread
 import time
 import includes.system_info as sysinfo
+import os
 #logging.basicConfig(level=logging.DEBUG)
 
 class Snoop(Thread):
@@ -51,7 +52,7 @@ class Snoop(Thread):
                 busy_pids = sysinfo.fetch_busy_processes() 
                  
                 global_stats['drone'] = self.drone
-                global_stats['timestamp'] = now
+                global_stats['timestamp'] = int(time.time())
     
                 for pid in busy_pids:
                     pid['drone'] = self.drone
