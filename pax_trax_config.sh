@@ -1,13 +1,14 @@
 #!/bin/bash
+set -e
 
-echo "This script will prepare the Sensor for PAX TRAX"
-echo "Please make sure you're running this from /home/ubuntu/snoopy_ng"
+echo "[+] This script will prepare the Sensor for PAX TRAX"
+echo "[+] Please make sure you're running this from /home/ubuntu/snoopy_ng"
 
-echo "Installing packages and required software"
-read -p "Press any key to continue"
+echo "[+] Installing packages and required software"
+read -p "   Press any key to continue"
 bash INSTALL.sh
 
-echo "Setting eth0 to static IP address of 192.168.100.13 (only to reflect on reboot)"
+echo "[+] Setting eth0 to static IP address of 192.168.100.13 (only to reflect on reboot)"
 
 cat > /etc/network/interfaces << EOL
 auto lo
@@ -20,12 +21,17 @@ netmask 255.255.255.0
 
 EOL
 
-echo "Copying cronjob auto rebooter (every day at 3am)"
+echo "[+] Copying SSH keys"
+mkdir -p /home/ubuntu/.ssh/
+cp ./setup/ssh/* /home/ubuntu/.ssh/
+
+echo "[+] Copying cronjob auto rebooter (every day at 3am)"
 cp ./setup/cron/rebooter /etc/cron.d/
-echo "Copying upstarts"
+echo "[+] Copying upstarts"
 cp /home/ubuntu/snoopy_ng/setup/upstarts/* /etc/init/
-echo "Starting Sensor ID config page"
+echo "[+] Starting Sensor ID config page"
 service drone_config start
 
-echo "Please go to http://this_device_ip:5000/set_sensor_id?id=set_number_here"
-echo "After doing so, reboot, and data should appear in the remote database"
+echo "[+] Please go to http://this_device_ip:5000/set_sensor_id?id=set_number_here"
+echo "[+] After doing so, reboot, and data should appear in the remote database"
+

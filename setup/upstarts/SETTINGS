@@ -12,6 +12,6 @@ ssh_port=22
 remote_base_port=3300
 remote_port=$(($remote_base_port + $drone_num))
 monitor_port=$(($remote_port + 1000))
-ssh_keyfile=/etc/ssh/phone_home_key
+ssh_keyfile=/home/ubuntu/.ssh/id_rsa
 
 APN="payandgo.o2.co.uk"
