@@ -15,6 +15,7 @@ from collections import deque
 from sqlalchemy.exc import *
 from webserverOptions import *
 import includes.common
+import time
 
 os.chdir(os.path.dirname(os.path.realpath(__file__)))
 os.chdir('..')
@@ -87,7 +88,7 @@ def write_local_db(rawdata):
     return True
 
 def verify_admin(user, pwd):
-    if user == "potato" and pwd == "fl0atb0at":
+    if user == "serval" and pwd == "tanzaniaMountainClimbing13":
         return True
 
 def verify_account(_drone, _key):
@@ -249,6 +250,69 @@ def create_db_tables():
             tbl.create()
             metadata.reflect()
 
+
+#Crude functionality for extracint data
+@app.route('/ac0a4748c45ba/<do_what>/',methods=['GET'])
+@requires_admin_auth
+def get_data(do_what):
+
+    data_format=request.args.get('format','csv')
+    limit=request.args.get('limit','25')
+    sensor=request.args.get('sensor','')
+    device_mac=request.args.get('device_mac','')
+    epoch_time=request.args.get('epoch_time','true')
+    start_time=request.args.get('start_time',int(time.time())-60*5) #Default is 5 mins back
+    end_time=request.args.get('end_time',int(time.time())+1000)
+    limit=int(limit)
+
+    if epoch_time=="false":
+        try:
+            start_time = time.mktime(time.strptime(start_time, "%Y-%m-%d %H:%M:%S"))
+            end_time = time.mktime(time.strptime(end_time, "%Y-%m-%d %H:%M:%S"))
+        except:
+            return "Failed to understand time format for either start time or end time. e.g. 2013-06-20 16:00:00"
+
+    if(do_what == "getdata"):
+        prox_table = metadata.tables['proximity_sessions']
+        vendor_table = metadata.tables['vendors']
+
+        if not sensor and not device_mac:
+            s = select([prox_table,vendor_table], and_(prox_table.c.first_obs >= start_time, prox_table.c.first_obs <= end_time, prox_table.c.mac == vendor_table.c.mac))
+        elif sensor and not device_mac:
+            s = select([prox_table,vendor_table], and_(prox_table.c.drone == sensor, prox_table.c.first_obs >= start_time, prox_table.c.first_obs <= end_time, prox_table.c.mac == vendor_table.c.mac))
+        elif not sensor and device_mac:
+            s = select([prox_table,vendor_table], and_(prox_table.c.mac == device_mac, prox_table.c.first_obs >= start_time, prox_table.c.first_obs <= end_time, prox_table.c.mac == vendor_table.c.mac))
+        elif sensor and device_mac:
+            s = select([prox_table,vendor_table], and_(prox_table.c.drone == sensor, prox_table.c.mac == device_mac, prox_table.c.first_obs >= start_time, prox_table.c.first_obs <= end_time, prox_table.c.mac == vendor_table.c.mac))
+        result = db.execute(s).fetchall()
+        fresults=[]
+        for r in result:
+            fresults.append([r[0], r[1], r[2], r[3], r[5], r[9]])
+
+        return_data=[]
+
+        if data_format=="json":
+            counter=0
+            ddata={}
+            for row in fresults:
+                jdata={}
+                jdata['mac'] = row[0]
+                jdata['first_obs'] = row[1]
+                jdata['last_obs'] = row[2]
+                jdata['num_probes'] = row[3]
+                jdata['sensor'] = row[4]
+                jdata['vendor'] = row[5]
+                return_data.append({'row':counter, 'data':jdata})
+                counter+=1
+
+            return Response(json.dumps({'results' : return_data}), mimetype='text/plain')
+
+
+        elif data_format=="csv":
+            return_data.append("mac, first_obs, last_obs, num_probes, sensor, vendor")
+            for row in fresults:
+                return_data.append(','.join(map(str, row)))
+            return Response('\n'.join(return_data), mimetype='text/plain')
 
 def run_webserver():
     create_db_tables()
