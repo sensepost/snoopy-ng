@@ -14,9 +14,20 @@ apt-get update
 
 # Packages
 echo "[+] Installing required packages..."
-apt-get install --force-yes --yes autossh python-psutil python2.7-dev libpcap0.8-dev python-sqlalchemy ppp tcpdump python-serial sqlite3 python-requests iw build-essential python-bluez python-flask
+apt-get install --force-yes --yes python-setuptools autossh python-psutil python2.7-dev libpcap0.8-dev python-sqlalchemy ppp tcpdump python-serial sqlite3 python-requests iw build-essential python-bluez python-flask
+
+# Python packages
+easy_install smspdu
 
 # Download & Installs
+echo "[+] Installing pyserial 2.6"
+wget http://pypi.python.org/packages/source/p/pyserial/pyserial-2.6.tar.gz
+tar xzf pyserial-2.6.tar.gz
+cd pyserial-2.6
+python setup.py install
+cd ..
+rm -rf pyserial-2.6*
+
 echo "[+] Downloading pylibpcap..."
 wget http://switch.dl.sourceforge.net/project/pylibpcap/pylibpcap/0.6.4/pylibpcap-0.6.4.tar.gz
 tar xzf pylibpcap-0.6.4.tar.gz
