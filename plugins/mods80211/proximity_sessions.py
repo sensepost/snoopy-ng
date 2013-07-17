@@ -49,8 +49,8 @@ class Snarf():
             last_obs = self.current_proximity_sessions[mac][1]
             num_probes = self.current_proximity_sessions[mac][2]
             if (t - last_obs) >= self.DELTA_PROX:
-                self.closed_proximity_sessions.append((mac, first_obs, t, num_probes))
-                del(self.current_proximity_sessions[mac])
+                self.closed_proximity_sessions.append((mac, first_obs, last_obs, num_probes)) #Terminate old prox session
+                self.current_proximity_sessions[mac] = [t, t, 1, 0] #Create new prox session
             else:
                 self.current_proximity_sessions[mac][1] = t
                 self.current_proximity_sessions[mac][3] = 0 #Mark as require db sync
