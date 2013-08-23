@@ -13,6 +13,7 @@ logging.getLogger("scapy.runtime").setLevel(logging.ERROR)
 from scapy.all import sniff, Dot11Elt, Dot11ProbeReq
 from collections import deque
 import time
+from plugins.mods80211.prefilter.prefilter import prefilter
 #logging.basicConfig(level=logging.DEBUG,format='%(asctime)s %(levelname)s %(filename)s: %(message)s',datefmt='%Y-%m-%d %H:%M:%S')
 
 class Snoop(Thread):
@@ -129,8 +130,9 @@ class Snoop(Thread):
         for i in range(self.packet_buffer_size):
             try:
                 packet = self.packet_queue.popleft()
-                for m in self.modules:
-                    m.proc_packet(packet)
+                if prefilter(packet):
+                    for m in self.modules:
+                        m.proc_packet(packet)
             except IndexError:
                 break
 

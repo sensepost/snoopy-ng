@@ -4,10 +4,11 @@
 import collections
 import logging
 import re
-from sqlalchemy import MetaData, Table, Column, String, Integer
+from sqlalchemy import MetaData, Table, Column, String, Integer, DateTime
 from includes.common import snoop_hash
 logging.getLogger("scapy.runtime").setLevel(logging.ERROR)
 from scapy.all import Dot11ProbeReq
+import datetime
 
 class Snarf():
     """Proximity session calculator"""
@@ -25,8 +26,8 @@ class Snarf():
         """Make sure to define your table here"""
         table = Table('proximity_sessions', MetaData(),
                       Column('mac', String(64), primary_key=True), #Len 64 for sha256
-                      Column('first_obs', Integer, primary_key=True, autoincrement=False),
-                      Column('last_obs', Integer),
+                      Column('first_obs', DateTime, primary_key=True, autoincrement=False),
+                      Column('last_obs', DateTime),
                       Column('num_probes', Integer),
                       Column('sunc', Integer, default=0))
         return [table]
@@ -39,6 +40,7 @@ class Snarf():
         if self.hash_macs == "True":
             mac = snoop_hash(mac)
         t = int(p.time)
+        sig_str = -(256-ord(p.notdecoded[-4:-3])) #TODO: Use signal strength
         # New
         if mac not in self.current_proximity_sessions:
             self.current_proximity_sessions[mac] = [t, t, 1, 0]
@@ -77,12 +79,14 @@ class Snarf():
         tmp_open_prox_sessions=[]  
         for mac,v in self.current_proximity_sessions.iteritems():
             first_obs,last_obs,num_probes=v[0],v[1],v[2]
+            first_obs,last_obs = datetime.datetime.fromtimestamp(first_obs), datetime.datetime.fromtimestamp(last_obs)
             if v[3] == 0:
                 tmp_open_prox_sessions.append({"mac":mac,"first_obs":first_obs,"last_obs":last_obs,"num_probes":num_probes})
         #2. Closed Prox Sessions
         tmp_closed_prox_sessions=[] 
         for i in range(len(self.closed_proximity_sessions)):
             mac,first_obs,last_obs,num_probes=self.closed_proximity_sessions.popleft()
+            first_obs,last_obs = datetime.datetime.fromtimestamp(first_obs), datetime.datetime.fromtimestamp(last_obs)
             tmp_closed_prox_sessions.append( {"mac":mac,"first_obs":first_obs,"last_obs":last_obs,"num_probes":num_probes} )
         if( len(tmp_open_prox_sessions+tmp_closed_prox_sessions) > 0 ):
             #data.append(   (table,columns,tmp+tmp2)    )

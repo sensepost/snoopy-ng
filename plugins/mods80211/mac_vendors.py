@@ -26,6 +26,7 @@ class Snarf():
         table = Table('vendors', MetaData(),
                       Column('mac', String(64), primary_key=True), #Len 64 for sha256
                       Column('vendor', String(20) ),
+                      Column('vendorLong', String(30) ),
                       Column('sunc', Integer, default=0))
         return [table]
 
@@ -45,9 +46,10 @@ class Snarf():
         mark_as_done = []
         for macven, sunc in self.device_vendor.iteritems():
             mac = macven[0]
-            vendor = macven[1]
+            vendor = macven[1][0]
+            vendorLong = macven[1][1]
             if sunc == 0:
-                new_data.append( {"mac": mac, "vendor": vendor} )
+                new_data.append( {"mac": mac, "vendor": vendor, "vendorLong": vendorLong} )
                 mark_as_done.append( (mac,vendor)  )
 
         # If we're reached the maximum, reduce by 50%

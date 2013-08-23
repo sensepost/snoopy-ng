@@ -12,7 +12,7 @@ from collections import OrderedDict
 
 #N.B If you change b64mode to False, you should probably change
 # the ssid colum to type Unicode.
-b64mode = True
+b64mode = False
 
 MAX_NUM_SSIDs = 1000 #Maximum number of mac:ssid pairs to keep in memory
 
@@ -33,7 +33,7 @@ class Snarf():
         return [table]
 
     def proc_packet(self, p):
-        if p.haslayer(Dot11ProbeReq) and p[Dot11Elt].info != '':
+        if p.haslayer(Dot11ProbeReq) and p[Dot11Elt].info != '' and re.match("[0-9a-f][0-9a-f]:[0-9a-f][0-9a-f]:[0-9a-f][0-9a-f]:[0-9a-f][0-9a-f]:[0-9a-f][0-9a-f]:[0-9a-f][0-9a-f]", p.addr2):
             mac = re.sub(':', '', p.addr2)
             if self.hash_macs == "True":
                 mac = snoop_hash(mac)
