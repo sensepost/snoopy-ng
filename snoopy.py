@@ -233,6 +233,9 @@ class Snoopy():
                 if results:
                     total_rows_to_upload += len(results)
                     result_as_dict = [dict(e) for e in results]
+                    for result in result_as_dict:
+                        for k,v in result.iteritems():
+                            result[k] = str(v) #e.g. for datetime.datetime
                     data_to_upload.append({"table": table_name,
                                            "data": result_as_dict})
             else:
