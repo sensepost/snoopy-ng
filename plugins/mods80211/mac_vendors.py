@@ -45,12 +45,17 @@ class Snarf():
         new_data = []
         mark_as_done = []
         for macven, sunc in self.device_vendor.iteritems():
-            mac = macven[0]
-            vendor = macven[1][0]
-            vendorLong = macven[1][1]
-            if sunc == 0:
-                new_data.append( {"mac": mac, "vendor": vendor, "vendorLong": vendorLong} )
-                mark_as_done.append( (mac,vendor)  )
+            try:
+                mac = macven[0]
+                vendor = macven[1][0]
+                vendorLong = macven[1][1]
+                if sunc == 0:
+                    new_data.append( {"mac": mac, "vendor": vendor, "vendorLong": vendorLong} )
+                    mark_as_done.append( (mac,(vendor,vendorLong))  )
+            except Exception, e:
+                logging.error(e)
+                logging.error(macven)
+
 
         # If we're reached the maximum, reduce by 50%
         if len( self.device_vendor ) > MAX_NUM_VENDORS:
@@ -64,6 +69,6 @@ class Snarf():
 
         if len( mark_as_done ) > 0:
             for macven in mark_as_done:
-                mac,vendor = macven[0], macven[1]
-                self.device_vendor[(mac,vendor)] = 1
+                mac,vendor,vendorLong = macven[0], macven[1][0], macven[1][1]
+                self.device_vendor[(mac,(vendor,vendorLong))] = 1
             return ("vendors", new_data)

@@ -40,7 +40,11 @@ class Snarf():
         if self.hash_macs == "True":
             mac = snoop_hash(mac)
         t = int(p.time)
-        sig_str = -(256-ord(p.notdecoded[-4:-3])) #TODO: Use signal strength
+        try:
+            sig_str = -(256-ord(p.notdecoded[-4:-3])) #TODO: Use signal strength
+        except:
+            logging.error("Unable to extract signal strength")
+            logging.error(p.summary())
         # New
         if mac not in self.current_proximity_sessions:
             self.current_proximity_sessions[mac] = [t, t, 1, 0]
