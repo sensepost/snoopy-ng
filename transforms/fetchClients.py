@@ -24,19 +24,16 @@ def main():
     #db.echo=True
     filters.append(proxs.c.mac == vends.c.mac)
     s = select([proxs.c.mac,vends.c.vendor, vends.c.vendorLong], and_(*filters))
+    logging.debug(s)
     #s = select([proxs.c.mac,vends.c.vendor, vends.c.vendorLong], and_(proxs.c.mac == vends.c.mac, proxs.c.num_probes>1 ) ).distinct()
     r = db.execute(s)
     results = r.fetchall()
     TRX = MaltegoTransform()
-
     for mac,vendor,vendorLong in results:
-        NewEnt=TRX.addEntity("snoopy.Client", vendor)
+        NewEnt=TRX.addEntity("snoopy.Client", "%s\n(%s)" %(vendor,mac[6:]))
         NewEnt.addAdditionalFields("mac","mac address", "strict",mac)
-        NewEnt.addAdditionalFields("vendor","vendor", "strict", vendor)
-        NewEnt.addAdditionalFields("vendorLong","vendorLong", "strict", vendorLong)
-    TRX.returnOutput()		
+        NewEnt.addAdditionalFields("vendor","vendor", "nostrict", vendor)
+        NewEnt.addAdditionalFields("vendorLong","vendorLong", "nostrict", vendorLong)
+    TRX.returnOutput()
 
 main()
-#me = MaltegoTransform()
-#me.addEntity("maltego.Phrase","hello bob")
-#me.returnOutput()                

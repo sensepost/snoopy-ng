@@ -17,5 +17,7 @@ def prefilter(p):
                 except:
                     logging.debug("Bad SSID detected: %s" % ssid)
                     return False
+                if len(ssid) == 0:
+                    return False
 
     return True #Default operation

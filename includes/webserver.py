@@ -16,6 +16,7 @@ from sqlalchemy.exc import *
 from webserverOptions import *
 import includes.common
 import time
+from datetime import datetime
 
 os.chdir(os.path.dirname(os.path.realpath(__file__)))
 os.chdir('..')
@@ -210,6 +211,16 @@ def catch_data():
         logging.error("Unable to parse JSON from '%s'" % request)
     else:
     #if jsdata:
+        #Dirty hack for converting back to a datetime object. Should rather define via column name? e.g. dt_observation
+        for data in jsdata:
+            for d in data['data']:
+                for k,v in d.iteritems():
+                    try:
+                        tmp=d[k]
+                        d[k]=datetime.strptime(d[k],"%Y-%m-%d %H:%M:%S")
+                    except Exception, e:
+                        pass
+
         result = write_local_db(jsdata)
 
         if result:
@@ -230,7 +241,7 @@ def create_db_tables():
 
     for mod in moduleNames:
         logging.debug("Loading tables for %s" % mod)
-        m = __import__(mod, fromlist="Snoop").Snoop()
+        m = __import__(mod, fromlist="Snoop").Snoop
         for ident in m.get_ident_tables():
             if ident is not None:
                 ident_tables.append(ident)
@@ -262,8 +273,15 @@ def get_data(do_what):
     device_mac=request.args.get('device_mac','')
     epoch_time=request.args.get('epoch_time','true')
     start_time=request.args.get('start_time',int(time.time())-60*5) #Default is 5 mins back
+    lookback_time=request.args.get('lookback','')
     end_time=request.args.get('end_time',int(time.time())+1000)
     limit=int(limit)
+
+    if lookback_time != '':
+        try:
+            start_time = int(time.time()) - int(lookback_time)
+        except:
+           return "Bad lookback value"
 
     if epoch_time=="false":
         try:

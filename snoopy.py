@@ -18,6 +18,7 @@ import random
 #CommandShell
 from includes.command_shell import CommandShell
 import includes.common
+import datetime
 
 #Set path
 snoopyPath=os.path.dirname(os.path.realpath(__file__))
@@ -42,6 +43,7 @@ logging.getLogger('').addHandler(console)
 
 class Snoopy():
     SYNC_FREQ = 5 #Sync every 5 seconds
+    SYNC_LIMIT = 1000 #How many rows to retrieve at a time for uploading
     MODULE_START_GRACE_TIME = 60 #A module gets this time to indicate its ready, before moving to next module.
 
     def __init__(self, _modules, dbms="sqlite:///snoopy.db",
@@ -71,8 +73,8 @@ class Snoopy():
         try:
             self.db = create_engine(dbms)
             self.metadata = MetaData(self.db)
-        except:
-            logging.error("Badly formed dbms schema. See http://docs.sqlalchemy.org/en/rel_0_8/core/engines.html for examples of valid schema")
+        except Exception, e:
+            logging.error("Unable to create DB: '%s'.\nPossibly a badly formed dbms schema? See http://docs.sqlalchemy.org/en/rel_0_8/core/engines.html for examples of valid schema" %str(e))
             sys.exit(-1)
         self.ident_tables = []
 
@@ -89,6 +91,7 @@ class Snoopy():
         for mod in modules_to_load:
             mod_name = mod['name']
             mod_params = mod['params']
+            mod_params['dbms'] = self.db
             m = __import__(mod_name, fromlist="Snoop").Snoop(**mod_params)
             self.modules.append(m)
 
@@ -227,7 +230,7 @@ class Snoopy():
         for table_name in self.tables: #self.metadata.sorted_tables:
             table = self.tables[table_name]
             if "sunc" in table.c:
-                query = table.select(table.c.sunc == 0)
+                query = table.select(table.c.sunc == 0).limit(self.SYNC_LIMIT)
                 ex = query.execute()
                 results = ex.fetchall()
                 if results:
@@ -235,7 +238,8 @@ class Snoopy():
                     result_as_dict = [dict(e) for e in results]
                     for result in result_as_dict:
                         for k,v in result.iteritems():
-                            result[k] = str(v) #e.g. for datetime.datetime
+                            if isinstance(v,datetime.datetime):
+                                result[k] = str(v) #e.g. for datetime.datetime
                     data_to_upload.append({"table": table_name,
                                            "data": result_as_dict})
             else:
@@ -256,7 +260,7 @@ class Snoopy():
                             #self.db.execute("DELETE FROM {0}".format(table_name))
                             numdel = table.delete().execute()
                     else:
-                        upd = table.update(values={table.c.sunc:1})
+                        upd = table.update(values={table.c.sunc:1}).limit(self.SYNC_LIMIT)
                         upd.execute()
             else:
                 logging.debug("Error attempting to upload %d rows of data :(" %
@@ -280,7 +284,7 @@ class Snoopy():
                 logging.error("Unable to upload data to '%s' - '%s'"% (self.server,reason))
                 return False
         except Exception, e:
-            logging.error("Unable to upload data to '%s' - '%s'"% (self.server,e))
+            logging.error("Unable to upload data to '%s' -  Exception:'%s'"% (self.server,e))
             logging.debug(e)
             return False
 

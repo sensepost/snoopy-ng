@@ -1,6 +1,9 @@
 from MaltegoTransform import *
 from datetime import datetime
 from sqlalchemy import create_engine, MetaData, select, and_
+import logging
+import re
+logging.basicConfig(level=logging.DEBUG,filename='/tmp/maltego_logs.txt',format='%(asctime)s %(levelname)s: %(message)s',datefmt='%Y-%m-%d %H:%M:%S')
 
 
 dbms="sqlite:////root/snoopy_ng/snoopy.db"
@@ -21,13 +24,17 @@ end_time = TRX.getVar("end_time", "2037-01-01 00:00:00.0")
 mac = TRX.getVar("mac")
 ssid = TRX.getVar("ssid")
 
+#New Maltego appends timezone
+start_time = re.sub(' \+.*', '', start_time)
+end_time = re.sub(' \+.*', '', end_time)
+
 st_obj = datetime.strptime(start_time,"%Y-%m-%d %H:%M:%S.%f")
 et_obj = datetime.strptime(end_time,"%Y-%m-%d %H:%M:%S.%f")
 
 proxs = metadata.tables['proximity_sessions']
 vends = metadata.tables['vendors']
 ssids = metadata.tables['ssids']
-vends = metadata.tables['vendors']
+wigle = metadata.tables['wigle']
 
 filters = []
 s = select([proxs], and_(*filters))
