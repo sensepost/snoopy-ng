@@ -17,7 +17,7 @@ import string
 import random
 #CommandShell
 from includes.command_shell import CommandShell
-import includes.common
+import includes.common as common
 import datetime
 
 #Set path
@@ -43,13 +43,12 @@ logging.getLogger('').addHandler(console)
 
 class Snoopy():
     SYNC_FREQ = 5 #Sync every 5 seconds
-    SYNC_LIMIT = 1000 #How many rows to retrieve at a time for uploading
+    SYNC_LIMIT = 200 #How many rows to upload at a time
     MODULE_START_GRACE_TIME = 60 #A module gets this time to indicate its ready, before moving to next module.
 
     def __init__(self, _modules, dbms="sqlite:///snoopy.db",
                  server="http://localhost:9001/", drone="unnamedDrone",
-                 key=None, location="unknownLocation", cmdShell=True, flush_local_data_after_sync=False):
-        #moduleNames = ["plugins."+ x for x in moduleNames]
+                 key=None, location="unknownLocation", cmdShell=True, flush_local_data_after_sync=True):
         #local data
         self.doCmdShell=False
         if cmdShell:
@@ -83,7 +82,7 @@ class Snoopy():
         try:
             self.go()
         except KeyboardInterrupt:
-            print "Caught Ctrl+C! Shutting down..."
+            print "Caught Ctrl+C! Saving data and shutting down..."
             self.stop()
 
     def _load_modules(self, modules_to_load):
@@ -124,54 +123,6 @@ class Snoopy():
 
         logging.info("Done loading modules, running...")
 
-
-    def _load_modules_old(self, moduleNames):
-#        self.modules = []
-#        for mod in moduleNames:
-#            mds = mod.split(":", 1)
-#            mod = mds[0]
-#            params = None
-#            if len(mds) > 1:
-#                params = mds[1].split(",")
-          
-        self.modules = []
-        for mod in moduleNames.iteritems(): 
-
-            m = __import__(mod, fromlist="Snoop").Snoop(params)
-            mod_start_time = os.times()[4]    #Get a system clock indepdent timer
-            m.start()
-            logging.info("Waiting for module '%s' to indicate it's ready" % mod)
-            while not m.is_ready() and (os.times()[4] - mod_start_time) < self.MODULE_START_GRACE_TIME:
-                time.sleep(2)
-            if not m.is_ready():
-                logging.info("Module '%s' ran out of time to indicate its ready state, moving on to next module." % mod)
-            else:
-                logging.info("Modules '%s' has indicated it's ready." % mod)
-
-            self.modules.append(m)
-
-            for ident in m.get_ident_tables():
-                if ident is not None:
-                    self.ident_tables.append(ident)
-            tbls = m.get_tables()
-            for tbl in tbls:
-                tbl.metadata = self.metadata
-                if tbl.name in self.ident_tables:
-                    tbl.append_column( Column('drone', String(length=20)) )
-                    tbl.append_column( Column('location', String(length=60)) )
-                    tbl.append_column( Column('run_id', String(length=11)) )
-
-                self.tables[tbl.name] = tbl
-                if not self.db.dialect.has_table(self.db.connect(), tbl.name):
-                    tbl.create()
-
-    @staticmethod
-    def get_plugins():
-        """List available plugins without instantiating the object."""
-        return [ os.path.basename(f)[:-3]
-                        for f in glob.glob("./plugins/*.py")
-                        if not os.path.basename(f).startswith('__') ]
-
     def go(self):
         if self.server != "local" and self.doCmdShell:
             self.cmdShell.start() #Start command shell
@@ -188,11 +139,14 @@ class Snoopy():
             time.sleep(1) #Delay between checking threads for new data
 
     def stop(self):
+        self.run = False
         if self.server != "local" and self.doCmdShell:
             self.cmdShell.stop()
-        self.run = False
         for m in self.modules:
             m.stop()
+        self.write_local_db()
+        if self.server != "local":
+            self.sync_to_server()
 
     def get_data(self):
         """Fetch data from all plugins"""
@@ -209,9 +163,10 @@ class Snoopy():
             try: #WTF is this? Fix it.
                 if tbl in self.ident_tables:
                     for d in data:
-                        d['drone'] = self.drone
-                        d['location'] = self.location
-                        d['run_id'] = self.run_id
+                        if 'drone' not in d: #Hack to avoid server module overwriting these values
+                            d['drone'] = self.drone
+                            d['location'] = self.location
+                            d['run_id'] = self.run_id
                 self.tables[tbl].insert().prefix_with("OR REPLACE").execute(data)
             except Exception, e:
                 logging.debug("1. Exception ->'%s'<- whilst attempting to insert data:" %(str(e)) )
@@ -223,14 +178,49 @@ class Snoopy():
                 if self.all_data:
                     self.all_data = {}
 
+    def chunker(self, seq, size):
+        return (seq[pos:pos + size] for pos in xrange(0, len(seq), size))
+
     def sync_to_server(self):
+        """Sync tables that have the 'sunc' column available"""
+
+        for table_name in self.tables:
+            table = self.tables[table_name]
+            if "sunc" not in table.c:
+                logging.debug("Not syncing table '%s' - no 'sunc' column" % table_name)
+                continue
+            query = table.select(table.c.sunc == 0)
+            ex = query.execute()
+            results = ex.fetchall()
+            sync_success = True
+            for data in self.chunker(results, self.SYNC_LIMIT):
+                result_as_dict = [dict(e) for e in data]
+                for result in result_as_dict:
+                    for k,v in result.iteritems():
+                        if isinstance(v,datetime.datetime):
+                            result[k] = str(v)
+                data_to_upload = {"table": table_name,
+                                           "data": result_as_dict}
+                data_to_upload =  json.dumps(data_to_upload)
+                sync_result = self.web_upload(data_to_upload)
+                if not sync_result:
+                    logging.error("Unable to upload %d rows from table '%s'. Moving to next table (check logs for details). " % (len(data), table_name))
+                    break
+                else:
+                    if self.flush_local_data_after_sync:
+                        table.delete().execute()
+                    else:
+                        table.update(values={table.c.sunc:1}).execute()
+
+
+    def sync_to_server_OLD(self):
         """Sync tables that have the 'sunc' column available"""
         data_to_upload = [] #JSON list
         total_rows_to_upload = 0
         for table_name in self.tables: #self.metadata.sorted_tables:
             table = self.tables[table_name]
             if "sunc" in table.c:
-                query = table.select(table.c.sunc == 0).limit(self.SYNC_LIMIT)
+                query = table.select(table.c.sunc == 0)
                 ex = query.execute()
                 results = ex.fetchall()
                 if results:
@@ -246,22 +236,23 @@ class Snoopy():
                 logging.debug("Ignoring table %s (no 'sunc' column)"%table)
 
         if data_to_upload:
-            data_to_upload = json.dumps(data_to_upload)
-            sync_success = self.web_upload(data_to_upload)
+            sync_success = True
+            for data in chunker(data_to_upload, SYNC_LIMIT):
+                data = json.dumps(data)
+                sync_result = self.web_upload(data)
+                if not sync_result:
+                    sync_success = False
 
             # If web sync was successful, mark local db as sunc
             if sync_success:
-                #logging.debug("Successfully sync'd %d rows of data :)" %
-                #              total_rows_to_upload)
                 for table_name in self.tables: #self.metadata.sorted_tables:
                     table = self.tables[table_name]
-                    if "sunc" in table.c:
+                    upd = table.update(values={table.c.sunc:1})
+                    upd.execute()
+                    if "sunc" in table.c and self.flush_local_data_after_sync:
                             #logging.debug("Flushing local data storage")
                             #self.db.execute("DELETE FROM {0}".format(table_name))
                             numdel = table.delete().execute()
-                    else:
-                        upd = table.update(values={table.c.sunc:1}).limit(self.SYNC_LIMIT)
-                        upd.execute()
             else:
                 logging.debug("Error attempting to upload %d rows of data :(" %
                               total_rows_to_upload)
@@ -281,11 +272,10 @@ class Snoopy():
                 return True
             else:
                 reason = result['reason']
-                logging.error("Unable to upload data to '%s' - '%s'"% (self.server,reason))
+                logging.debug("Unable to upload data to '%s' - '%s'"% (self.server,reason))
                 return False
         except Exception, e:
-            logging.error("Unable to upload data to '%s' -  Exception:'%s'"% (self.server,e))
-            logging.debug(e)
+            logging.debug("Unable to upload data to '%s' -  Exception:'%s'"% (self.server,e))
             return False
 
 
@@ -308,62 +298,46 @@ class Snoopy():
 
 def main():
     print "Snoopy V0.2. glenn@sensepost.com\n"
-    usage = """Usage: %prog [--client <http://sync_server:port> | --server ] [--dbms <database>] [--module <module[:params]>] [<client options> | <server options>]"""
+    usage = """Usage: %prog [--server <http://sync_server:port> ] [--dbms <database>] [--module <module[:params]>] [<client options> | <server options>]"""
     parser = OptionParser(usage=usage)
-    #Client options
-    group_c = OptionGroup(parser, "Client Options")
 
     if os.geteuid() != 0:
-        sys.exit("Please run me with root privilages")
+        logging.warning("Running without root privilages. Some things may not work.")
 
-    parser.add_option("-c", "--client", dest="sync_server", action="store", help="Run Snoopy client component, uploading data to specified SYNC_SERVER (http://host:port) (specifcy 'local' for local only capture).")
-    group_c.add_option("-d", "--drone", dest="drone", action="store", help="Specify the name of your drone.")
-    group_c.add_option("-k", "--key", dest="key", action="store", help="Specify key for drone name supplied.")
-    group_c.add_option("-l", "--location", dest="location", action="store", help="Specify the location of your drone.")
+    parser.add_option("-s", "--server", dest="sync_server", action="store", help="Upload data to specified SYNC_SERVER (http://host:port) (Ommitting will save data locally).", default="local")
+    parser.add_option("-d", "--drone", dest="drone", action="store", help="Specify the name of your drone.")
+    parser.add_option("-k", "--key", dest="key", action="store", help="Specify key for drone name supplied.")
+    parser.add_option("-l", "--location", dest="location", action="store", help="Specify the location of your drone.")
     parser.add_option("-r", "--shell", dest="cmd_shell", action="store_true", help="Run command shell for remote administration of drone.")
-    parser.add_option("-f", "--flush", dest="flush", action="store_true", help="Flush local database after syncronizing with remote server. Default is to keep a local copy.")
+    parser.add_option("-f", "--flush", dest="flush", action="store_true", help="Flush local database after syncronizing with remote server. Default is True.")
 
-    #parser.add_option("-", "--", dest="", action="store_true", help="")
+    parser.add_option("-n", "--new_drone", dest="newdrone", action="store", help="Create a new drone account, supplying the name. Will output a key to be used by client.")
+    parser.add_option("-e", "--erase_drone", dest="deldrone", action="store", help="Delete a drone account by its name.")
+    parser.add_option("-a", "--list_drones", dest="listdrones", action="store_true", help="List all drone accounts.")
 
-    #Server options
-    group_s = OptionGroup(parser, "Server Options")
-
-    parser.add_option("-s", "--server", dest="server_mode", action="store_true", help="Run Snoopy sync server. Define options in includes/webserverOptions.py")
-    parser.add_option("-p", "--path", dest="server_path", action="store", default="/", help="Run Snoopy sync server component from web path (default '/')")
-    group_s.add_option("-n", "--new_drone", dest="newdrone", action="store", help="Create a new drone account, supplying the name. Will output a key to be used by client.")
-    group_s.add_option("-e", "--erase_drone", dest="deldrone", action="store", help="Delete a drone account by its name.")
-    group_s.add_option("-a", "--list_drones", dest="listdrones", action="store_true", help="List all drone accounts.")
-
-    #Common options
     parser.add_option("-b", "--dbms", dest="dbms", action="store", type="string", default="sqlite:///snoopy.db", help="Database to use, in SQL Alchemy format. [default: %default]")
-    parser.add_option("-m", "--module", dest="module", action="append", help="Module to load. Pass parameters with colon. e.g '-m c80211:mon0,aggressive'. Use -i to list available modules and their paramters.")
-    #parser.add_option("-p", "--parameters", dest="parameters", action="append", help="Optional module parameters, per module. Omit for default.")
-    parser.add_option("-i", "--list", dest="list", action="store_true", help="List all available modules and exit.", default=False)
-
-    parser.add_option_group(group_c)
-    parser.add_option_group(group_s)
+    parser.add_option("-m", "--plugin", dest="plugin", action="append", help="Plugin to load. Pass parameters with colon. e.g '-m c80211:mon0,aggressive'. Use -i to list available plugins  and their paramters.")
+    parser.add_option("-i", "--list", dest="list", action="store_true", help="List all available plugins and exit.", default=False)
 
     options, args = parser.parse_args()
 
-    moduleNames = Snoopy.get_plugins() #[os.path.basename(f)[:-3] for f in glob.glob("./plugins/client/*.py") if not os.path.basename(f).startswith('__')]
+    plugins = common.get_plugins()
     if options.list:
-        print "[+] Modules available:"
-        for mod in moduleNames:
-            tmp = mod
-            mod = "plugins." + mod
-            m = __import__(mod, fromlist="Snoop").Snoop
-            param_list = m.get_parameter_list()
-            print "\tName: \t%s" % tmp
+        print "[+] Plugins available:"
+        for plug in plugins:
+            param_list = plug.get_parameter_list()
+            tmp = str(plug).split(".")[1]
+            print "\tName:\t\t%s" % tmp 
             for p in param_list:
-                print "\tParameter: \t%s" % p
+                print "\tParameter: \t%s" % p 
             print "\n"
         sys.exit(0)
+
     if options.newdrone:
         print "[+] Creating new Snoopy server sync account"
         import includes.webserver
         key = includes.webserver.manage_drone_account(options.newdrone,
                                                                 "create")
-                                                                
         print "[+] Key for '%s' is '%s'" % (options.newdrone, key)
         print "[+] Use this value in client mode to sync data to a remote server. e.g:"
         print ("    %s --client http://remote-server/ --drone %s --key %s "
@@ -384,52 +358,36 @@ def main():
             print "\t%s:%s" % (d[0], d[1])
         sys.exit(0)
 
-    if (options.sync_server is not None and options.server_mode ) or \
-            (options.sync_server is None and options.server_mode is None):
-        logging.error("No options specified. Try -h for help.")
+    if options.plugin is None:
+        logging.error("Error: You must specify at least one plugin. Try -h for help")
         sys.exit(-1)
 
-    #Client mode
-    if options.sync_server is not None:
-        if options.drone is None or options.location is None :
-            logging.error("You must specify drone name (-d) and drone location (-l)")
+    if (options.drone is None or options.location is None) and not ( len(options.plugin) == 1 and options.plugin[0].split(":")[0] == "server" ) :
+        logging.error("You must specify drone name (-d) and drone location (-l). Does not apply if only running server plugin.")
+        sys.exit(-1)
+    if options.key is None and options.sync_server != "local":
+        logging.error("You must specify a key when uploading data (-k)")
+        sys.exit(-1)
+
+    #Check validity of plugins
+    for m in options.plugin:
+        if m.split(":", 1)[0] not in common.get_plugin_names():
+            logging.error("Invalid plugin - '%s'. Use --list to list all available plugins." % (m.split(':', 1)[0]))
             sys.exit(-1)
-        if options.sync_server == "local":
-            logging.info("Capturing local only")
-        else:
-            if options.key is None:
-                logging.error("You must specify a key when uploading data (-k)")
-                sys.exit(-1)
+    logging.info("Starting Snoopy with plugins: %s" % (str(options.plugin)))
 
-        mods = options.module
-        if options.module is None:
-            #mods = moduleNames
-            logging.error("Error: You must specify at least one module. Try -h for help")
-            sys.exit(-1)
-        #Check validity of mods
-        for m in mods:
-            if m.split(":", 1)[0] not in moduleNames:
-                logging.error("Invalid module - '%s'. Use --list to list all available modules." % (m.split(':', 1)[0]))
-                sys.exit(-1)
-        logging.info("Starting Snoopy with modules: %s" % (str(mods)))
-
-        newmods=[]
-        for m in mods:
-            mds = m.split(":", 1)
-            name = mds[0]
-            params = {}
-            if len(mds) > 1:
-                params = dict(a.split("=") for a in mds[1].split(","))        
-            newmods.append({'name':'plugins.'+name, 'params':params})
-
-        Snoopy(newmods, options.dbms, options.sync_server, options.drone,
-               options.key, options.location, options.cmd_shell, options.flush)
-
-    #Server mode
-    else:
-        logging.info ("Starting Snoopy sync web server with options from webserverOptions.py")
-        import includes.webserver
-        includes.webserver.run_webserver()
+    newplugs=[]
+    for m in options.plugin:
+        mds = m.split(":", 1)
+        name = mds[0]
+        params = {}
+        if len(mds) > 1:
+            params = dict(a.split("=") for a in mds[1].split(","))
+        newplugs.append({'name':'plugins.'+name, 'params':params})
+    if options.sync_server == "local":
+        logging.info("Capturing local only. Saving to '%s'" % options.dbms)
+    Snoopy(newplugs, options.dbms, options.sync_server, options.drone,
+           options.key, options.location, options.cmd_shell, options.flush)
 
 if __name__ == "__main__":
     main()

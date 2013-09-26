@@ -13,7 +13,6 @@ from sqlalchemy import create_engine, MetaData, Table, Column, String,\
                    select, and_, Integer
 from collections import deque
 from sqlalchemy.exc import *
-from webserverOptions import *
 import includes.common
 import time
 from datetime import datetime
@@ -21,16 +20,18 @@ from datetime import datetime
 os.chdir(os.path.dirname(os.path.realpath(__file__)))
 os.chdir('..')
 
-logging.basicConfig(level=logging.DEBUG, filename='/tmp/snoopy_server.log',
-                format='%(asctime)s %(levelname)s %(filename)s: %(message)s',
-                datefmt='%Y-%m-%d %H:%M:%S')
+log = logging.getLogger('werkzeug')
+log.setLevel(logging.ERROR)
+
 
 #logging.basicConfig()
 #logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
 
+path="/"
 logging.debug("Loading webserver code")
 
 app = Flask(__name__)
+dbms="sqlite:////snoopy_creds.db"
 db = create_engine(dbms)
 metadata = MetaData(db)
 metadata.reflect()
@@ -38,6 +39,8 @@ metadata.reflect()
 drone_tbl_def = Table('drones', MetaData(),
                         Column('drone', String(40), primary_key=True),
                         Column('key', String(40)))
+
+server_data = deque(maxlen=100000)
 
 def manage_drone_account(drone, operation):
 
@@ -207,26 +210,34 @@ def server_add_command():
 def catch_data():
     try:
         jsdata = unpack_data(request)
+        #Dirty hack for converting back to a datetime object. Should rather define via column name? e.g. dt_observation
+#        for data in jsdata:
+        for d in jsdata['data']:
+            for k,v in d.iteritems():
+                try:
+                    tmp=d[k]
+                    d[k]=datetime.strptime(d[k],"%Y-%m-%d %H:%M:%S")
+                except Exception, e:
+                    pass
+        #result = write_local_db(jsdata)
+        server_data.append((jsdata['table'], jsdata['data']  ) )
+
     except Exception,e:
         logging.error("Unable to parse JSON from '%s'" % request)
+        print jsdata
+        logging.error(e)
+        return '{"result":"failure", "reason":"Check server logs"}'
     else:
-    #if jsdata:
-        #Dirty hack for converting back to a datetime object. Should rather define via column name? e.g. dt_observation
-        for data in jsdata:
-            for d in data['data']:
-                for k,v in d.iteritems():
-                    try:
-                        tmp=d[k]
-                        d[k]=datetime.strptime(d[k],"%Y-%m-%d %H:%M:%S")
-                    except Exception, e:
-                        pass
+        return '{"result":"success", "reason":"None"}'
 
-        result = write_local_db(jsdata)
-
-        if result:
-            return '{"result":"success", "reason":"None"}'
+def poll_data():
+        rtnData=[]
+        while server_data:
+            rtnData.append(server_data.popleft())
+        if rtnData:
+            return rtnData
         else:
-            return '{"result":"failure", "reason":"Check server logs"}'
+            return []
 
 def create_db_tables():
 
@@ -332,9 +343,9 @@ def get_data(do_what):
                 return_data.append(','.join(map(str, row)))
             return Response('\n'.join(return_data), mimetype='text/plain')
 
-def run_webserver():
-    create_db_tables()
-    app.run(host="0.0.0.0", port=port)
+def run_webserver(port=9001,ip="0.0.0.0"):
+    #create_db_tables()
+    app.run(host=ip, port=port)
 
 if __name__ == "__main__":
     run_webserver()

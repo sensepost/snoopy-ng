@@ -65,7 +65,7 @@ class Snoop(Thread):
     @staticmethod
     def get_parameter_list():
         #TODO: "<proximity_delta> - time between observataions to group proximity sessions (e.g. -m:c80211:mon0,60")
-        return ["iface=<dev> - interface to listen on. (e.g. -m c80211:iface=wlan3)","mon=[True|False] - Enable monitor mode on <dev> (e.g. -m c80211:iface=wlan3,mon=True","filter=<bpf> - Filter to apply. (e.g. -mc c80211:filter='foobar'","hash=[True|False} - Hash MAC addresses"]
+        return ["iface=<dev> - interface to listen on. (e.g. -m c80211:iface=wlan3)","mon=[True|False] - Enable monitor mode on <iface> (e.g. -m c80211:iface=wlan3,mon=True","filter=<bpf> - Filter to apply. (e.g. -mc c80211:filter='foobar'","hash=[True|False} - Hash MAC addresses"]
 
     @staticmethod
     def get_ident_tables():
@@ -106,14 +106,14 @@ class Snoop(Thread):
                 sniff(store=0, iface=self.iface, prn=self.packeteer, filter=self.bfilter,
                       stopperTimeout=1, stopper=self.stopperCheck)
             except Exception:
-                logging.exception(("Scapy exception whilst sniffing. "
-                                   "Will back off for 10 seconds, "
+                logging.error(("Scapy exception whilst sniffing. "
+                                   "Will back off for 5 seconds, "
                                    "and try restart '%s' plugin") % __name__)
                 self.sniffErrors+=1
             if self.sniffErrors >3 :
                 logging.error("Restarting module '%s' after 5 failed attempts" %__file__)
             else:
-                time.sleep(2)
+                time.sleep(5)
 
     def stopperCheck(self):
         return self.STOP_SNIFFING

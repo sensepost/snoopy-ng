@@ -2,38 +2,61 @@
 # -*- coding: utf-8 -*-
 
 import logging
+from sqlalchemy import Float, DateTime, String, Integer, Table, MetaData, Column #As required
 from threading import Thread
-from sqlalchemy import MetaData, Table, Column, String, Integer
-
 logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s %(levelname)s %(filename)s: %(message)s',
                     datefmt='%Y-%m-%d %H:%M:%S')
+import time
+from collections import deque
+from random import randint
+import datetime
+from threading import Thread
 
 class Snoop(Thread):
     def __init__(self, **kwargs):
-        # Process arguments passed to module
         Thread.__init__(self)
+        self.RUN = True
+        self.data_store = deque(maxlen=1000)
+
+        # Process arguments passed to module
+        self.var01 = kwargs.get('var01','default01')
+        self.var02 = kwargs.get('var02','default02')
+
+        self.db = kwargs.get('dbms',None)
+        if self.db:
+            self.metadata = MetaData(self.db)       #If you need to access the db object. N.B Use for *READ* only.
+            self.metadata.reflect()
 
     def run(self):
-        """Operations for module go here."""
-        pass
+        while self.RUN:
+            new_value = randint(1,52) #Pick a card, any card
+            now = datetime.datetime.now()
+            self.data_store.append({'var01':self.var01, 'time':now, 'rand_num':new_value})
+            logging.debug("Added %d" % new_value)
+            time.sleep(2)
 
     def is_ready(self):
-        """Indicates the module is ready, and loading of next module may commence."""
-        return False
+        #Perform any functions that must complete before plugin runs
+        return True
 
     def stop(self):
-        """Perform operations required to stop module and return"""
-        pass
+        self.RUN = False
 
     @staticmethod
     def get_parameter_list():
-        """List of paramters that can be passed to the module, for user help output."""
-        return ["None"]
+        return ["var01 - Pass var01", "var02 - Used to define var02"]
 
     def get_data(self):
         """Ensure data is returned in the form of a SQL row."""
-        return []
+        #e.g of return data - [("tbl_name", [{'var01':99, 'var02':199}]
+        rtnData=[]
+        while self.data_store:
+            rtnData.append(self.data_store.popleft())
+        if rtnData:
+            return [("example_table", rtnData)]
+        else:
+            return []
 
     @staticmethod
     def get_ident_tables():
@@ -42,15 +65,14 @@ class Snoop(Thread):
 
     @staticmethod
     def get_tables():
-        """Return the table definitions for this module."""
-        # Make sure to define your table here. Ensure you have a 'sunc' column:
-        # table = Table('sample_table',Metadata(),
-        #                      Column('sample_row1', String(12), primary_key=True),
-        #                      Column('sample_row2', Unicode, primary_key=True),
-        #                      Column('sunc', Integer, default=0))
-        # return table
-        return []
+        """This function should return a list of table(s)"""
 
+        table = Table('example_table',MetaData(),
+                              Column('time', DateTime, default='' ),
+                              Column('rand_num', Integer, default='' ),
+                              Column('var01', String(length=20)),
+                              Column('var02', String(length=20)))
+        return [table]
 
 if __name__ == "__main__":
     Snoop().start()
