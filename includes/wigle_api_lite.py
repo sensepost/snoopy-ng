@@ -33,7 +33,6 @@ requests_log.setLevel(logging.WARNING)
 pp = pprint.PrettyPrinter(indent=4)
 fd=os.path.dirname(os.path.realpath(__file__))
 tmp=re.search('(^.*)\/.*',fd)
-save_dir="%s/web_data/street_views"%tmp.group(1)
 
 def wigle(account,ssid):
 
@@ -165,10 +164,6 @@ def getAddress(gps_lat,gps_long):
     return {'longaddress':longaddress, 'shortaddress':shortaddress, 'city':city, 'country':country, 'code':country_code, 'county':county, 'postcode':postcode, 'road':road, 'state':state, 'suburb':suburb}
 
 def fetchLocations(ssid):
-    global save_dir
-
-    if not os.path.exists(save_dir) and not os.path.isdir(save_dir):
-        os.makedirs(save_dir)
 
     #logging.debug("Wigling %s"%ssid)
     try:

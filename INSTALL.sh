@@ -21,12 +21,7 @@ easy_install smspdu
 
 # Download & Installs
 echo "[+] Installing pyserial 2.6"
-wget http://pypi.python.org/packages/source/p/pyserial/pyserial-2.6.tar.gz
-tar xzf pyserial-2.6.tar.gz
-cd pyserial-2.6
-python setup.py install
-cd ..
-rm -rf pyserial-2.6*
+pip install https://pypi.python.org/packages/source/p/pyserial/pyserial-2.6.tar.gz
 
 echo "[+] Downloading pylibpcap..."
 wget http://switch.dl.sourceforge.net/project/pylibpcap/pylibpcap/0.6.4/pylibpcap-0.6.4.tar.gz

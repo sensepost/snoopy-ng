@@ -17,6 +17,7 @@ import string
 import random
 #CommandShell
 from includes.command_shell import CommandShell
+from includes.common import *
 import includes.common as common
 import datetime
 
@@ -91,6 +92,9 @@ class Snoopy():
             mod_name = mod['name']
             mod_params = mod['params']
             mod_params['dbms'] = self.db
+            mod_params['drone'] = self.drone
+            mod_params['location'] = self.location
+            mod_params['run_id'] = self.run_id
             m = __import__(mod_name, fromlist="Snoop").Snoop(**mod_params)
             self.modules.append(m)
 
@@ -167,7 +171,9 @@ class Snoopy():
                             d['drone'] = self.drone
                             d['location'] = self.location
                             d['run_id'] = self.run_id
-                self.tables[tbl].insert().prefix_with("OR REPLACE").execute(data)
+                #tbl.insert().execute(data)
+                self.tables[tbl].insert().execute(data)
+                #self.tables[tbl].insert().prefix_with("OR REPLACE").execute(data)
             except Exception, e:
                 logging.debug("1. Exception ->'%s'<- whilst attempting to insert data:" %(str(e)) )
                 logging.debug("2. Data was ->'%s'<-" %(str(data)) )
@@ -297,8 +303,16 @@ class Snoopy():
         #    return False
 
 def main():
-    print "Snoopy V0.2. glenn@sensepost.com\n"
-    usage = """Usage: %prog [--server <http://sync_server:port> ] [--dbms <database>] [--module <module[:params]>] [<client options> | <server options>]"""
+    message = """
+ ___  _  _  _____  _____  ____  _  _
+/ __)( \( )(  _  )(  _  )(  _ \( \/ )
+\__ \ )  (  )(_)(  )(_)(  )___/ \  /
+(___/(_)\_)(_____)(_____)(__)   (__)
+Version: 2.0
+Code: glenn@sensepost.com
+"""
+    print message
+    usage = """Usage: %prog [--server <http|xbee://sync_server:[port]> ] [--dbms <database>] [--module <module[:params]>]\nSee the upstart scripts for advice on auto starting on boot."""
     parser = OptionParser(usage=usage)
 
     if os.geteuid() != 0:
@@ -309,11 +323,7 @@ def main():
     parser.add_option("-k", "--key", dest="key", action="store", help="Specify key for drone name supplied.")
     parser.add_option("-l", "--location", dest="location", action="store", help="Specify the location of your drone.")
     parser.add_option("-r", "--shell", dest="cmd_shell", action="store_true", help="Run command shell for remote administration of drone.")
-    parser.add_option("-f", "--flush", dest="flush", action="store_true", help="Flush local database after syncronizing with remote server. Default is True.")
-
-    parser.add_option("-n", "--new_drone", dest="newdrone", action="store", help="Create a new drone account, supplying the name. Will output a key to be used by client.")
-    parser.add_option("-e", "--erase_drone", dest="deldrone", action="store", help="Delete a drone account by its name.")
-    parser.add_option("-a", "--list_drones", dest="listdrones", action="store_true", help="List all drone accounts.")
+    parser.add_option("-f", "--flush", dest="flush", action="store_true", help="Flush local database after syncronizing with remote server. Default is to not flush.", default=False)
 
     parser.add_option("-b", "--dbms", dest="dbms", action="store", type="string", default="sqlite:///snoopy.db", help="Database to use, in SQL Alchemy format. [default: %default]")
     parser.add_option("-m", "--plugin", dest="plugin", action="append", help="Plugin to load. Pass parameters with colon. e.g '-m c80211:mon0,aggressive'. Use -i to list available plugins  and their paramters.")
@@ -325,37 +335,16 @@ def main():
     if options.list:
         print "[+] Plugins available:"
         for plug in plugins:
-            param_list = plug.get_parameter_list()
-            tmp = str(plug).split(".")[1]
-            print "\tName:\t\t%s" % tmp 
-            for p in param_list:
-                print "\tParameter: \t%s" % p 
+            plugin_info = plug.get_parameter_list()
+            info, param_list = plugin_info.get('info'), plugin_info.get('parameter_list')
+            name = str(plug).split(".")[1]
+            print "\tName:\t\t%s" %name
+            print "\tInfo:\t\t%s" %info
+            if param_list:
+                for p in param_list:
+                    print "\tParameter: \t%s" %p[0]
+                    print "\t\t\t%s" % p[1]
             print "\n"
-        sys.exit(0)
-
-    if options.newdrone:
-        print "[+] Creating new Snoopy server sync account"
-        import includes.webserver
-        key = includes.webserver.manage_drone_account(options.newdrone,
-                                                                "create")
-        print "[+] Key for '%s' is '%s'" % (options.newdrone, key)
-        print "[+] Use this value in client mode to sync data to a remote server. e.g:"
-        print ("    %s --client http://remote-server/ --drone %s --key %s "
-               "--location <somelocation> -m <module01> -m <modules02>") % \
-              (__file__, options.newdrone, key)
-        sys.exit(0)
-    elif options.deldrone:
-        import includes.webserver
-        print "[+] Deleting drone account '%s'" % options.deldrone
-        includes.webserver.manage_drone_account(options.deldrone,
-                                                          "delete")
-        sys.exit(0)
-    elif options.listdrones:
-        import includes.webserver
-        print "[+] Available drone accounts:"
-        drones = includes.webserver.manage_drone_account(1, "list")
-        for d in drones:
-            print "\t%s:%s" % (d[0], d[1])
         sys.exit(0)
 
     if options.plugin is None:

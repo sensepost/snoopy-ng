@@ -5,6 +5,7 @@ from sqlalchemy import create_engine, MetaData, Table, Column, String,\
                    select, and_, Integer
 from collections import deque
 from sqlalchemy.exc import *
+from includes.common import *
 import includes.common as common
 import time
 from datetime import datetime
@@ -63,7 +64,13 @@ class Snoop(Thread):
 
     @staticmethod
     def get_parameter_list():
-        return ["port=<port> - Port to listen on. Default is 9001."]
+        info = {"info" : "Runs a server - allowing local data to be synchronized remotely.",
+                "parameter_list" : [("port=<int>","The HTTP port to listen on."),
+                                    ("xbee=<int>","The XBee PIN to listen on")
+                                    ]
+                }
+
+        return info
 
     def get_data(self):
         return webserver.poll_data()

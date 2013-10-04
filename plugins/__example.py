@@ -14,6 +14,7 @@ import datetime
 from threading import Thread
 
 class Snoop(Thread):
+    """This is an example plugin."""
     def __init__(self, **kwargs):
         Thread.__init__(self)
         self.RUN = True
@@ -45,7 +46,12 @@ class Snoop(Thread):
 
     @staticmethod
     def get_parameter_list():
-        return ["var01 - Pass var01", "var02 - Used to define var02"]
+        info = {"info" : "This is a test plugin. Testing 1,2,3. Can you hear me?",
+                "parameter_list" : [ ("x=<y>","Test parameter one."),
+                                     ("v=[True|False]","Test parameter two.")]
+                }
+        return info
+
 
     def get_data(self):
         """Ensure data is returned in the form of a SQL row."""

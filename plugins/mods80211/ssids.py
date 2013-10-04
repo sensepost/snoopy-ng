@@ -17,11 +17,14 @@ b64mode = False
 MAX_NUM_SSIDs = 1000 #Maximum number of mac:ssid pairs to keep in memory
 
 class Snarf():
-    """SSID processor."""
+    """Extract SSIDs from probe-requests."""
 
-    def __init__(self,hash_macs="False"):
+#   def __init__(self,hash_macs="False"):
+    def __init__(self, **kwargs):
         self.device_ssids = OrderedDict()
-        self.hash_macs = hash_macs
+        #self.hash_macs = hash_macs
+
+        self.hash_macs = kwargs.get('hash_macs', False)
 
     @staticmethod
     def get_tables():

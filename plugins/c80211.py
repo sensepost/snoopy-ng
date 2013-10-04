@@ -46,7 +46,8 @@ class Snoop(Thread):
 
         self.modules = []
         for m in Snoop.get_modules():
-            self.modules.append(__import__(m, fromlist=['Snarf']).Snarf(hash_macs=self.hash_macs))
+            #self.modules.append(__import__(m, fromlist=['Snarf']).Snarf(hash_macs=self.hash_macs))
+            self.modules.append(__import__(m, fromlist=['Snarf']).Snarf(**kwargs))
 
     @staticmethod
     def get_modules():
@@ -65,13 +66,28 @@ class Snoop(Thread):
     @staticmethod
     def get_parameter_list():
         #TODO: "<proximity_delta> - time between observataions to group proximity sessions (e.g. -m:c80211:mon0,60")
-        return ["iface=<dev> - interface to listen on. (e.g. -m c80211:iface=wlan3)","mon=[True|False] - Enable monitor mode on <iface> (e.g. -m c80211:iface=wlan3,mon=True","filter=<bpf> - Filter to apply. (e.g. -mc c80211:filter='foobar'","hash=[True|False} - Hash MAC addresses"]
+        sub_plugs = ""
+        for m in Snoop.get_modules():
+            sub_plug = __import__(m, fromlist=['Snarf']).Snarf
+            desc =  sub_plug.__doc__
+            name = m.split(".")[-1]
+            sub_plugs += "\n\t\t\t *%s - %s" % (name,desc)
+
+        info = {"info" : "This plugin intercepts and processes network traffic. A series of sub-plugins exists within the 'mods' subfolder. Existing sub-plugins are:%s\n"%sub_plugs,
+                "parameter_list" : [("iface=<dev>", "interface to listen on. e.g. -m c80211:iface=wlan3"),
+                                    ("mon=[True|False]","First enable monitor mode on <iface>. e.g. -m c80211:iface=wlan3,mon=True. If no <iface> specified, will find first appropriate one."),
+                                    ]
+                }
+        return info
+
+        #return ["iface=<dev> - interface to listen on. (e.g. -m c80211:iface=wlan3)","mon=[True|False] - Enable monitor mode on <iface> (e.g. -m c80211:iface=wlan3,mon=True","filter=<bpf> - Filter to apply. (e.g. -mc c80211:filter='foobar'","hash=[True|False} - Hash MAC addresses"]
 
     @staticmethod
     def get_ident_tables():
         """Return a list of tables that requrie identing - i.e. adding drone
             name and location."""
-        return ['proximity_sessions']
+        #return ['proximity_sessions']
+        return []
 
     def is_ready(self):
         return self.ready_status
@@ -105,10 +121,11 @@ class Snoop(Thread):
                 shownMessage = False
                 sniff(store=0, iface=self.iface, prn=self.packeteer, filter=self.bfilter,
                       stopperTimeout=1, stopper=self.stopperCheck)
-            except Exception:
+            except Exception, e:
                 logging.error(("Scapy exception whilst sniffing. "
                                    "Will back off for 5 seconds, "
                                    "and try restart '%s' plugin") % __name__)
+                logging.error(e)
                 self.sniffErrors+=1
             if self.sniffErrors >3 :
                 logging.error("Restarting module '%s' after 5 failed attempts" %__file__)

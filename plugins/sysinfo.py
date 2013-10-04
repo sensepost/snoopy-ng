@@ -33,7 +33,10 @@ class Snoop(Thread):
     @staticmethod
     def get_parameter_list():
         """List of paramters that can be passed to the module, for user help output."""
-        return ["None"]
+        info = {"info" : "Retrieves system information, every 30 minutes.",
+                "parameter_list" : None
+                }
+        return info
 
     def get_data(self):
         """Ensure data is returned in the form of a SQL row."""

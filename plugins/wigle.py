@@ -113,7 +113,10 @@ class Snoop(Thread):
 
     @staticmethod
     def get_parameter_list():
-        return ["None"]
+        info = {"info" : "Looks up SSID locations via Wigle (from the ssid table). Ensure credentials are in 'wigle_creds.txt' in the ./includes/ folder.",
+                "parameter_list" : None
+                }
+        return info
 
     def get_data(self):
         """Ensure data is returned in the form of a SQL row."""
@@ -141,7 +144,7 @@ class Snoop(Thread):
                               Column('lat', Float(), default=999 ),
                               Column('long', Float(), default=999 ),
                               Column('last_update', Integer, default=0 ),
-                              Column('mac', String(length=16), default='' ),
+                              Column('mac', String(length=18), default='' ),
                               Column('overflow', Integer),
                               Column('longaddress', String(length=150),default='' ),
                               Column('shortaddress', String(length=50),default='' ),

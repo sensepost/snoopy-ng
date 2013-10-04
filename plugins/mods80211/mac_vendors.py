@@ -13,12 +13,15 @@ from collections import OrderedDict
 MAX_NUM_VENDORS = 1000
 
 class Snarf():
-    """Lookup vendor"""
+    """Looks up vendors from MAC addresses."""
 
-    def __init__(self,hash_macs="False"):
+#    def __init__(self,hash_macs="False"):
+    def __init__(self, **kwargs):
         self.device_vendor = OrderedDict()
-        self.hash_macs = hash_macs
+        #self.hash_macs = hash_macs
         self.mv = mac_vendor()
+
+        self.hash_macs = kwargs.get('hash_macs', False)
 
     @staticmethod
     def get_tables():

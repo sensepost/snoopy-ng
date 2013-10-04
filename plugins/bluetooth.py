@@ -3,7 +3,6 @@
 
 import time
 import logging
-from bluetooth import discover_devices
 from sqlalchemy import MetaData, Table, Column, String, Unicode, Integer
 from threading import Thread
 
@@ -15,6 +14,7 @@ logging.basicConfig(level=logging.DEBUG,
 
 class Snoop(Thread):
     def __init__(self, *kwargs):
+        from bluetooth import discover_devices
         Thread.__init__(self)
         self.devices = {}
         self.RUN = True
@@ -40,7 +40,11 @@ class Snoop(Thread):
 
     @staticmethod
     def get_parameter_list():
-        return ["None"]
+        info = {"info" : "Discovers Bluetooth devices.",
+                "parameter_list" : None
+                }
+        return info
+
 
     def get_data(self):
         """Ensure data is returned in the form of a SQL row."""

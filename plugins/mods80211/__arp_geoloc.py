@@ -10,7 +10,8 @@ logging.getLogger("scapy.runtime").setLevel(logging.ERROR)
 
 
 class Snarf():
-    def __init__(self):
+    """Grabs BSSID from arp frames (thanks Hubert)"""
+    def __init__(self,**kwargs):
         self.device_bssids = {}
 
     @staticmethod
