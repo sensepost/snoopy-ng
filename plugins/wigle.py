@@ -7,7 +7,7 @@ from threading import Thread
 from collections import deque
 import os
 import time
-from includes.wigle_api_lite import fetchLocations
+from includes.wigle_api import Wigle
 logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s %(levelname)s %(filename)s: %(message)s',
                     datefmt='%Y-%m-%d %H:%M:%S')
@@ -24,19 +24,21 @@ class Snoop(Thread):
         self.current_lookup = ''
         self.successfully_geolocated = deque()
         self.recently_found = deque(maxlen=1000)    #We keep a register of the last 1000, to prevent superfluous lookups before results make it into the db
+        self.wig = None #Wigle object
 
         # Process arguments passed to module
-        self.username = kwargs.get('username','NoUserNameSupplied')
-        self.password = kwargs.get('password','NoPasswordSupplied')
+        self.username = kwargs.get('username')
+        self.password = kwargs.get('password')
+        self.email = kwargs.get('email')
+
         self.db = kwargs.get('dbms',None)
+        self.wig = Wigle(self.username,self.password, self.email)
 
         self.last_checked = 0
         self.metadata = MetaData(self.db)
         self.metadata.reflect()
-#        self.metadata = MetaData(self.db)
-#        self.metadata.reflect()
-#        t_wigle = self.metadata.tables['wigle']
-#        t_ssids = self.metadata.tables['ssids']
+        self.db_ready = False
+        self.is_db_ready()
 
     def querydb(self):
         wigle = self.metadata.tables['wigle']
@@ -61,40 +63,38 @@ class Snoop(Thread):
         """Thread runs independently looking up SSIDs"""
         wigle = self.metadata.tables['wigle']
         while self.RUN:
+            if not self.wig.cookies:
+                if not self.wig.login():
+                    logging.error("Login to Wigle failed!")
+
             try:
                 self.current_lookup = self.ssids_to_lookup.popleft()
             except IndexError:
                 pass
             else:
-                if self.bad_ssids.get(self.current_lookup) > 2:
-                    logging.debug("Ignoring bad SSID '%s'" % self.current_lookup)
-                else:
-                    locations = fetchLocations(self.current_lookup)
-                    if locations == None:
+                locations = self.wig.lookupSSID(self.current_lookup)
+
+                if 'error' in locations:
+                    if 'shun' in locations['error']:
                         logging.info("Wigle account has been shunned, backing off for 20 minutes")
-                        time.sleep(60*20)
                         self.ssids_to_lookup.append(self.current_lookup)
-                    elif 'error' in locations:
-                        if 'Unable to login' in locations['error']:
-                            logging.error("Unable to login to Wigle - check your credentials")
-                            self.ssids_to_lookup.append(self.current_lookup)
-                        else:
-                            logging.error("An error occured whilst looking up SSID '%s', will retry in 5 seconds (Error: '%s')" %(self.current_lookup,locations['error']))
-                            if self.current_lookup not in self.bad_ssids:
-                                self.bad_ssids[self.current_lookup] = 0
-                            self.bad_ssids[self.current_lookup] += 1
-                            time.sleep(5)
-                            self.ssids_to_lookup.append(self.current_lookup)
+                        for i in range(60*20):
+                            if not self.RUN:
+                                break
+                            time.sleep(1)
+                    elif 'Cookie not set' in locations['error']:
+                        logging.error("No valid Wigle cookie. Login may have failed.")
                     else:
-                        self.recently_found.append(self.current_lookup)
-                        for location in locations:
-                            #for k in wigle.columns.keys():
-                            #    if k not in locations:
-                            #        location[k] = '' #Ensure no mising keys
-                            self.successfully_geolocated.append( location )
+                        logging.error("An error occured whilst looking up SSID '%s', will retry in 5 seconds (Error: '%s')" %(self.current_lookup,locations['error']))
+                        self.ssids_to_lookup.append(self.current_lookup)
+                        time.sleep(5)
+                else:
+                    self.recently_found.append(self.current_lookup)
+                    for location in locations:
+                        self.successfully_geolocated.append( location )
             time.sleep(2)
 
-    def is_ready(self):
+    def is_db_ready(self):
         #Wait to ensure tables exist
         while True:
             try:
@@ -106,15 +106,22 @@ class Snoop(Thread):
             else:
                 break
         time.sleep(2)
-        return True
+        self.db_ready = True
+
+
+    def is_ready(self):
+        return self.db_ready
 
     def stop(self):
         self.RUN = False
 
     @staticmethod
     def get_parameter_list():
-        info = {"info" : "Looks up SSID locations via Wigle (from the ssid table). Ensure credentials are in 'wigle_creds.txt' in the ./includes/ folder.",
-                "parameter_list" : None
+        info = {"info" : "Looks up SSID locations via Wigle (from the ssid table).",
+                "parameter_list" : [("username=<u>","Wigle username"),
+                                    ("password=<p>","Wigle password"),
+                                    ("email=<foo@bar.com>","Supplied in query to OpenStreetView. It's polite to use your real email")
+                                    ]
                 }
         return info
 
