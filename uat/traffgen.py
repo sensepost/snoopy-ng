@@ -1,3 +1,4 @@
+#!/usr/bin/python
 from scapy.all import *
 import time
 import random
@@ -6,9 +7,17 @@ import hashlib
 import datetime
 import sys
 import monitor_mode 
+import random
 
 ssid="helloWorld"
 f=open('log_traffic.txt','w')
+rand_ssid = True
+
+words=[]
+if rand_ssid:
+    f2=open('words.txt')
+    words=f2.readlines()
+    words = [x.rstrip() for x in words]
 
 def rand_mac():
     return ':'.join(map(lambda x: "%02x" % x, [ 0x00, 0x16, 0x3E, random.randint(0x00, 0x7F), random.randint(0x00, 0xFF), random.randint(0x00, 0xFF) ]))
@@ -46,6 +55,9 @@ def make_traffic(num_macs=10, run_time=30, cull=0.9,iface="mon0"):
                      mac_counter[mac] = 1
                      print "\r[+] Sent a total of %d packets from %d unique MAC addresses so far (cycled MACs %d times)" % (packet_counter, len(mac_counter), cycle_count),
                      sys.stdout.flush()
+                     if rand_ssid:
+                        rnd = random.randint(0,len(words)-1)
+                        ssid = words[rnd]
                      p=RadioTap()/Dot11(addr1='ff:ff:ff:ff:ff:ff', addr3='ff:ff:ff:ff:ff:ff',addr2=mac)/Dot11ProbeReq() / Dot11Elt(ID='SSID', info=ssid) 
                      for i in range(random.randint(3,5)):
                           sendp(p, iface=iface, verbose=0)

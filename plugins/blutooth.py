@@ -13,13 +13,13 @@ logging.basicConfig(level=logging.DEBUG,
 
 
 class Snoop(Thread):
-    def __init__(self, *kwargs):
-        from bluetooth import discover_devices
+    def __init__(self, **kwargs):
         Thread.__init__(self)
         self.devices = {}
         self.RUN = True
 
     def run(self):
+        from bluetooth import discover_devices
         logging.debug("Starting bluetooth module")
         while self.RUN:
             for addr, name in discover_devices(lookup_names=True):
@@ -36,7 +36,7 @@ class Snoop(Thread):
         self.RUN = False
 
     def is_ready(self):
-        return False
+        return True
 
     @staticmethod
     def get_parameter_list():
