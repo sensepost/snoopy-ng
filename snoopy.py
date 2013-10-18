@@ -319,9 +319,9 @@ Code: glenn@sensepost.com
         logging.warning("Running without root privilages. Some things may not work.")
 
     parser.add_option("-s", "--server", dest="sync_server", action="store", help="Upload data to specified SYNC_SERVER (http://host:port) (Ommitting will save data locally).", default="local")
-    parser.add_option("-d", "--drone", dest="drone", action="store", help="Specify the name of your drone.")
+    parser.add_option("-d", "--drone", dest="drone", action="store", help="Specify the name of your drone.")#,default="noDroneSpecified")
     parser.add_option("-k", "--key", dest="key", action="store", help="Specify key for drone name supplied.")
-    parser.add_option("-l", "--location", dest="location", action="store", help="Specify the location of your drone.")
+    parser.add_option("-l", "--location", dest="location", action="store", help="Specify the location of your drone.")#,default="noLocationSpecified")
     parser.add_option("-r", "--shell", dest="cmd_shell", action="store_true", help="Run command shell for remote administration of drone.")
     parser.add_option("-f", "--flush", dest="flush", action="store_true", help="Flush local database after syncronizing with remote server. Default is to not flush.", default=False)
 
@@ -351,11 +351,13 @@ Code: glenn@sensepost.com
         logging.error("Error: You must specify at least one plugin. Try -h for help")
         sys.exit(-1)
 
-    if (options.drone is None or options.location is None) and not ( len(options.plugin) == 1 and options.plugin[0].split(":")[0] == "server" ) :
-        logging.error("You must specify drone name (-d) and drone location (-l). Does not apply if only running server plugin.")
-        sys.exit(-1)
-    if options.key is None and options.sync_server != "local":
-        logging.error("You must specify a key when uploading data (-k)")
+#    if (options.drone is None or options.location is None) and not ( len(options.plugin) == 1 and options.plugin[0].split(":")[0] == "server" ) :
+    if options.drone is None or options.location is None:
+        logging.warning("Drone (-d) or locaion (-l) not specified. May not be required by the plugins you're using.")
+        #logging.error("You must specify drone name (-d) and drone location (-l). Does not apply if only running server plugin.")
+        #sys.exit(-1)
+    if (options.key is None or options.drone is None) and options.sync_server != "local":
+        logging.error("You must specify a drone (-d) and a key (-k) when uploading data.")
         sys.exit(-1)
 
     #Check validity of plugins
