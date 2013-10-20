@@ -11,7 +11,9 @@ from sqlalchemy.exc import *
 import time
 from datetime import datetime
 
-from auth_handler import manage_drone_account, verify_account, verify_admin
+#from auth_handler import manage_drone_account, verify_account, verify_admin
+from auth_handler import auth
+
 
 log = logging.getLogger('werkzeug')
 log.setLevel(logging.ERROR)
@@ -20,7 +22,7 @@ path="/"
 logging.debug("Loading webserver code")
 
 app = Flask(__name__)
-
+auth_ = auth()
 server_data = deque(maxlen=100000)
 
 def write_local_db(rawdata):
@@ -59,7 +61,7 @@ def requires_auth(f):
     @wraps(f)
     def decorated(*args, **kwargs):
         auth = request.authorization
-        if not auth or not verify_account(auth.username, auth.password):
+        if not auth or not auth_.verify_account(auth.username, auth.password):
             return authenticate()
         return f(*args, **kwargs)
     return decorated
@@ -238,27 +240,4 @@ def run_webserver(port=9001,ip="0.0.0.0"):
     app.run(host=ip, port=port)
 
 if __name__ == "__main__":
-    import argparse
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-c","--create", help="Create a new drone account")
-    parser.add_argument("-d","--delete", help="Delete an existing drone account")
-    parser.add_argument("-l","--list", help="List all drones and keys", action="store_true")
-    args = parser.parse_args()
-
-    if args.create:
-        print "[+] Creating new Snoopy server sync account"
-        key = manage_drone_account(args.create, "create")
-        if key:
-            print "[+] Key for '%s' is '%s'" % (args.create, key)
-            print "[+] Use this value in client mode to sync data to a remote server."
-    elif args.delete:
-        if manage_drone_account(args.delete, "delete"):
-            print "[+] Deleting '%s'" % args.delete
-    elif args.list:
-        print "[+] Available drone accounts:"
-        drones = manage_drone_account("foo", "list")
-        for d in drones:
-            print "\t%s:%s" % (d[0], d[1])
-
-
-    #run_webserver()
+    run_webserver()
