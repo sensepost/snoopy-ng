@@ -44,11 +44,12 @@ class Snarf():
                         Column('lastAccessed', Integer),
                         Column('creationTime', Integer),
                         Column('isSecure', Integer, default=0),
-                        Column('isHttpOnly', Integer, default=0))
+                        Column('isHttpOnly', Integer, default=0),
+                        Column('sunc', Integer, default=0))
         return [table]
 
     def proc_packet(self, pkt):
-        if pkt.haslayer(TCP):
+        if pkt.haslayer(TCP) and pkt.haslayer(IP):
             if pkt.haslayer(Raw):
                 tcpdata = pkt.getlayer(Raw).load
                 if tcpdata.startswith("POST ") or tcpdata.startswith("GET "):
