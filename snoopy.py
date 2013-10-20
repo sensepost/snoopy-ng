@@ -15,8 +15,6 @@ import base64
 #Server
 import string
 import random
-#CommandShell
-from includes.command_shell import CommandShell
 from includes.common import *
 import includes.common as common
 import datetime
@@ -49,12 +47,8 @@ class Snoopy():
 
     def __init__(self, _modules, dbms="sqlite:///snoopy.db",
                  server="http://localhost:9001/", drone="unnamedDrone",
-                 key=None, location="unknownLocation", cmdShell=True, flush_local_data_after_sync=True):
+                 key=None, location="unknownLocation", flush_local_data_after_sync=True):
         #local data
-        self.doCmdShell=False
-        if cmdShell:
-            logging.debug("Running cmdshell!")
-            self.doCmdShell=True
         self.all_data = {}
         self.run = True
         self.server = server
@@ -64,9 +58,6 @@ class Snoopy():
         self.run_id = ''.join(random.choice(string.ascii_uppercase + string.digits)
                               for x in range(10))
         self.flush_local_data_after_sync = flush_local_data_after_sync
-        #Command Shell
-        if self.doCmdShell:
-            self.cmdShell = CommandShell(self.server, self.drone, self.key)
 
         #Database
         self.tables = {}
@@ -118,8 +109,6 @@ class Snoopy():
         logging.info("Done loading modules, running...")
 
     def go(self):
-        if self.server != "local" and self.doCmdShell:
-            self.cmdShell.start() #Start command shell
         last_update = 0
         while self.run:
             self.get_data()
@@ -134,8 +123,6 @@ class Snoopy():
 
     def stop(self):
         self.run = False
-        if self.server != "local" and self.doCmdShell:
-            self.cmdShell.stop()
         for m in self.modules:
             m.stop()
         self.write_local_db()
@@ -304,7 +291,6 @@ Code: glenn@sensepost.com
     parser.add_option("-d", "--drone", dest="drone", action="store", help="Specify the name of your drone.")#,default="noDroneSpecified")
     parser.add_option("-k", "--key", dest="key", action="store", help="Specify key for drone name supplied.")
     parser.add_option("-l", "--location", dest="location", action="store", help="Specify the location of your drone.")#,default="noLocationSpecified")
-    parser.add_option("-r", "--shell", dest="cmd_shell", action="store_true", help="Run command shell for remote administration of drone.")
     parser.add_option("-f", "--flush", dest="flush", action="store_true", help="Flush local database after syncronizing with remote server. Default is to not flush.", default=False)
 
     parser.add_option("-b", "--dbms", dest="dbms", action="store", type="string", default="sqlite:///snoopy.db", help="Database to use, in SQL Alchemy format. [default: %default]")
@@ -360,7 +346,7 @@ Code: glenn@sensepost.com
     if options.sync_server == "local":
         logging.info("Capturing local only. Saving to '%s'" % options.dbms)
     Snoopy(newplugs, options.dbms, options.sync_server, options.drone,
-           options.key, options.location, options.cmd_shell, options.flush)
+           options.key, options.location, options.flush)
 
 if __name__ == "__main__":
     main()
