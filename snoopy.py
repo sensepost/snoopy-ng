@@ -76,7 +76,6 @@ class Snoopy():
         except Exception, e:
             logging.error("Unable to create DB: '%s'.\nPossibly a badly formed dbms schema? See http://docs.sqlalchemy.org/en/rel_0_8/core/engines.html for examples of valid schema" %str(e))
             sys.exit(-1)
-        self.ident_tables = []
 
         self._load_modules(_modules)
 
@@ -98,18 +97,9 @@ class Snoopy():
             m = __import__(mod_name, fromlist="Snoop").Snoop(**mod_params)
             self.modules.append(m)
 
-            logging.debug("Creating/checking tables for %s" % mod_name)
-            for ident in m.get_ident_tables():
-                if ident is not None:
-                    self.ident_tables.append(ident)
             tbls = m.get_tables()
             for tbl in tbls:
                 tbl.metadata = self.metadata
-                if tbl.name in self.ident_tables:
-                    tbl.append_column( Column('drone', String(length=20)) )
-                    tbl.append_column( Column('location', String(length=60)) )
-                    tbl.append_column( Column('run_id', String(length=11)) )
-
                 self.tables[tbl.name] = tbl
                 if not self.db.dialect.has_table(self.db.connect(), tbl.name):
                     tbl.create()
@@ -164,16 +154,8 @@ class Snoopy():
     def write_local_db(self):
         """Write local sqlite db"""
         for tbl, data in self.all_data.iteritems():
-            try: #WTF is this? Fix it.
-                if tbl in self.ident_tables:
-                    for d in data:
-                        if 'drone' not in d: #Hack to avoid server module overwriting these values
-                            d['drone'] = self.drone
-                            d['location'] = self.location
-                            d['run_id'] = self.run_id
-                #tbl.insert().execute(data)
+            try: 
                 self.tables[tbl].insert().execute(data)
-                #self.tables[tbl].insert().prefix_with("OR REPLACE").execute(data)
             except Exception, e:
                 logging.debug("1. Exception ->'%s'<- whilst attempting to insert data:" %(str(e)) )
                 logging.debug("2. Data was ->'%s'<-" %(str(data)) )
