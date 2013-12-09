@@ -3,42 +3,73 @@ from datetime import datetime
 from sqlalchemy import create_engine, MetaData, select, and_
 import logging
 import re
+from dateutil import parser
+import os
 logging.basicConfig(level=logging.DEBUG,filename='/tmp/maltego_logs.txt',format='%(asctime)s %(levelname)s: %(message)s',datefmt='%Y-%m-%d %H:%M:%S')
 
+if not os.path.isdir("/etc/transforms"):
+    print "ERROR: '/etc/tranforms' symlink doesn't exist"
+    exit(-1)
 
-dbms="sqlite:////root/snoopy_ng/snoopy.db"
+f = open("/etc/transforms/db_path.conf")
+dbms = f.readline().strip()
 
-db = create_engine(dbms)
+try:
+    db = create_engine(dbms)
 #db.echo = True
-metadata = MetaData(db)
-metadata.reflect()
+    metadata = MetaData(db)
+    metadata.reflect()
+except Exception,e:
+    print "ERROR: Unable to communicate with DB specified in /etc/transforms/db_path.txt ('%s'). Error was '%s'" % str(e)
+    exit(-1)
 
 TRX = MaltegoTransform()
 TRX = MaltegoTransform()
 TRX.parseArguments(sys.argv)
 
-drone = TRX.getVar("drone")
-location = TRX.getVar("location")
-start_time = TRX.getVar("start_time", "2000-01-01 00:00:00.0")
-end_time = TRX.getVar("end_time", "2037-01-01 00:00:00.0")
-mac = TRX.getVar("mac")
-ssid = TRX.getVar("ssid")
+drone = TRX.getVar("properties.drone")
+if TRX.getVar("drone"):
+    drone = TRX.getVar("drone")
 
-#New Maltego appends timezone
-start_time = re.sub(' \+.*', '', start_time)
-end_time = re.sub(' \+.*', '', end_time)
+location = TRX.getVar("properties.dronelocation")
+if TRX.getVar("location"):
+    location = TRX.getVar("location")
 
-st_obj = datetime.strptime(start_time,"%Y-%m-%d %H:%M:%S.%f")
-et_obj = datetime.strptime(end_time,"%Y-%m-%d %H:%M:%S.%f")
+start_time = TRX.getVar("properties.start_time", "2000-01-01 00:00:00.0")
+if TRX.getVar("start_time"):
+    start_time = TRX.getVar("start_time", "2000-01-01 00:00:00.0")
 
-proxs = metadata.tables['proximity_sessions']
-vends = metadata.tables['vendors']
-ssids = metadata.tables['ssids']
-wigle = metadata.tables['wigle']
+end_time = TRX.getVar("properties.end_time", "2037-01-01 00:00:00.0")
+if TRX.getVar("end_time"):
+    end_time = TRX.getVar("end_time", "2037-01-01 00:00:00.0")
+
+mac = TRX.getVar("properties.mac")
+if TRX.getVar("mac"):
+    mac = TRX.getVar("mac")
+
+ssid = TRX.getVar("properties.ssid")
+if TRX.getVar("ssid"):
+    ssid = TRX.getVar("ssid")   #Manually overide
+
+observation = TRX.getVar("properties.observation")
+
+st_obj = parser.parse(start_time)
+et_obj = parser.parse(end_time)
+
+try:
+    proxs = metadata.tables['proximity_sessions']
+    vends = metadata.tables['vendors']
+    ssids = metadata.tables['ssids']
+    wigle = metadata.tables['wigle']
+except Exception, e:
+    print "ERROR: Unable to query tables from supplied db (%s)" % dbms
+    exit(-1)
 
 filters = []
 s = select([proxs], and_(*filters))
 filters.append(proxs.c.num_probes>1)
+
+logging.debug(filters)
 
 if start_time is not None:
     filters.append(proxs.c.first_obs >= st_obj)

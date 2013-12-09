@@ -28,7 +28,7 @@ def main():
     for location in results:
         location = location[0]
         NewEnt=TRX.addEntity("snoopy.DroneLocation", location)
-        NewEnt.addAdditionalFields("location","location", "strict", location)
+        #NewEnt.addAdditionalFields("location","location", "strict", location)
         NewEnt.addAdditionalFields("drone","drone", "strict", drone)
         NewEnt.addAdditionalFields("start_time", "start_time", "strict", start_time)
         NewEnt.addAdditionalFields("end_time", "end_time", "strict", end_time)

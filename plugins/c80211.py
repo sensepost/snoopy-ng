@@ -10,10 +10,11 @@ from threading import Thread
 import includes.monitor_mode as mm
 #import includes.LogManager
 logging.getLogger("scapy.runtime").setLevel(logging.ERROR)
-from scapy.all import sniff, Dot11Elt, Dot11ProbeReq
+from scapy.all import sniff, Dot11Elt, Dot11ProbeReq, rdpcap, Scapy_Exception
 from collections import deque
 import time
 from plugins.mods80211.prefilter.prefilter import prefilter
+import sys
 #logging.basicConfig(level=logging.DEBUG,format='%(asctime)s %(levelname)s %(filename)s: %(message)s',datefmt='%Y-%m-%d %H:%M:%S')
 
 class Snoop(Thread):
@@ -34,6 +35,7 @@ class Snoop(Thread):
         self.enable_monitor_mode = kwargs.get('mon',"False")
         self.bfilter = kwargs.get('filter',"")
         self.hash_macs = kwargs.get('hash',"False")
+        self.pcap = kwargs.get('pcap')
 
         if self.enable_monitor_mode == "False":
             self.enable_monitor_mode = False
@@ -80,56 +82,62 @@ class Snoop(Thread):
                 }
         return info
 
-        #return ["iface=<dev> - interface to listen on. (e.g. -m c80211:iface=wlan3)","mon=[True|False] - Enable monitor mode on <iface> (e.g. -m c80211:iface=wlan3,mon=True","filter=<bpf> - Filter to apply. (e.g. -mc c80211:filter='foobar'","hash=[True|False} - Hash MAC addresses"]
-
-    @staticmethod
-    def get_ident_tables():
-        """Return a list of tables that requrie identing - i.e. adding drone
-            name and location."""
-        #return ['proximity_sessions']
-        return []
-
     def is_ready(self):
         return self.ready_status
 
     def stop(self):
         self.STOP_SNIFFING = True
 
-    def run(self):
-        #if self.iface is None:
-        #    logging.error("No interface specified for '%s' module, cannot run" % __name__)
-        #else:
-        #    logging.debug("Starting sniffer plugin on interface '%s'" % self.iface)
+    def parse_pcap(self):
+        logging.info("Reading in '%s' capture file (slow)..." % self.pcap)
+        try:
+            data = rdpcap(self.pcap)
+        except Exception, e:
+            logging.error("Unable to read in '%s' capture file: '%s'" % (self.pcap, e))
+            logging.error("Did you create '%s' with tcpdump?" % self.pcap)
+            self.stop()
+            sys.exit(-1)
+        else:
+            logging.info("Done reading in '%s'. Processsing..." % self.pcap)
+            for p in data:
+                self.packeteer(p)
+            logging.info("Finished.... I won't re-read this file, so you may want to exit and restart if you populate it again.")
 
-        shownMessage = False
-        while not self.STOP_SNIFFING:
-            if self.enable_monitor_mode:
-                    self.iface=mm.enable_monitor_mode(self.iface)
-                    if not self.iface:
-                            if not shownMessage:
-                                logging.error("No suitable monitor interface available. Will check every 5 seconds, but not display this message again.")
-                                shownMessage = True
-                            time.sleep(5)
-            if not self.iface and self.enable_monitor_mode:
-                continue
-            if not self.iface:
-                logging.info("No interface specified. Will sniff *all* interfaces.")
-            else:
-                logging.info("Starting sniffing on interface '%s'"%self.iface)
-            try:
-                self.ready_status = True
-                shownMessage = False
-                sniff(store=0, iface=self.iface, prn=self.packeteer, filter=self.bfilter,
-                      stopperTimeout=1, stopper=self.stopperCheck)
-            except Exception, e:
-                logging.error(("Scapy exception whilst sniffing. "
-                                   "Will back off for 5 seconds, "
-                                   "and try restart '%s' plugin") % __name__)
-                logging.error(e)
-                self.sniffErrors+=1
-            if self.sniffErrors >3 :
-                logging.error("Restarting module '%s' after 5 failed attempts" %__file__)
-            else:
+
+    def run(self):
+        if self.pcap:
+            self.ready_status = True
+            self.parse_pcap()
+        else:
+
+            shownMessage = False
+            while not self.STOP_SNIFFING:
+                if self.enable_monitor_mode:
+                        self.iface=mm.enable_monitor_mode(self.iface)
+                        if not self.iface:
+                                if not shownMessage:
+                                    logging.error("No suitable monitor interface available. Will check every 5 seconds, but not display this message again.")
+                                    shownMessage = True
+                                time.sleep(5)
+                if not self.iface and self.enable_monitor_mode:
+                    continue
+                if not self.iface:
+                    logging.info("No interface specified. Will sniff *all* interfaces.")
+                else:
+                    logging.info("Starting sniffing on interface '%s'"%self.iface)
+                try:
+                    self.ready_status = True
+                    shownMessage = False
+                    sniff(store=0, iface=self.iface, prn=self.packeteer, filter=self.bfilter,
+                          stopperTimeout=1, stopper=self.stopperCheck)
+                except Exception, e:
+                    logging.error(("Scapy exception whilst sniffing. "
+                                       "Will back off for 5 seconds, "
+                                       "and try restart '%s' plugin") % __name__)
+                    logging.error(e)
+                    self.sniffErrors+=1
+                if self.sniffErrors >3 :
+                    logging.error("Restarting module '%s' after 5 failed attempts" %__file__)
                 time.sleep(5)
 
     def stopperCheck(self):

@@ -22,10 +22,25 @@ def main():
 
     #Custom query per transform, but apply filter with and_(*filters) from transformCommon.
     #db.echo=True
-    filters.append(proxs.c.mac == vends.c.mac)
-    s = select([proxs.c.mac,vends.c.vendor, vends.c.vendorLong], and_(*filters))
-    logging.debug(s)
+
+    #Need to implement outer join at some point:
+    # s=select([proxs.c.mac]).outerjoin(vends, proxs.c.mac == vends.c.mac) #Outer join
+    
+    #filters.append(proxs.c.mac == vends.c.mac) # Replaced with JOIN
+    j = proxs.outerjoin(vends, proxs.c.mac == vends.c.mac)
+    s = select([proxs.c.mac,vends.c.vendor, vends.c.vendorLong], and_(*filters)).select_from(j)
+
+    #s = select([proxs.c.mac,vends.c.vendor, vends.c.vendorLong], and_(*filters))
+
+    if ssid:
+        nfilters=[]
+        nfilters.append(ssids.c.ssid == ssid)
+        nfilters.append(ssids.c.mac == vends.c.mac)
+        s = select([ssids.c.mac,vends.c.vendor, vends.c.vendorLong], and_(*nfilters))
+
+    #logging.debug(s)
     #s = select([proxs.c.mac,vends.c.vendor, vends.c.vendorLong], and_(proxs.c.mac == vends.c.mac, proxs.c.num_probes>1 ) ).distinct()
+
     r = db.execute(s)
     results = r.fetchall()
     TRX = MaltegoTransform()

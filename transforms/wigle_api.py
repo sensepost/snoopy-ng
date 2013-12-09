@@ -22,7 +22,7 @@ import sys
 requests_log = logging.getLogger("requests")
 requests_log.setLevel(logging.ERROR)
 
-url = {'land':"https://wigle.net/", 'login': "https://wigle.net/gps/gps/main/login", 'query':"http://wigle.net/gps/gps/main/confirmquery/"}
+url = {'land':"https://wigle.net/", 'login': "https://wigle.net/gps/gps/main/login", 'query':"https://wigle.net/gps/gps/main/confirmquery/"}
 
 class Wigle(object):
 
@@ -76,6 +76,8 @@ class Wigle(object):
                 for l in locations:
                     l.update(self._getAddress(l['lat'],l['long']))
             return locations
+        else:
+            return results
 
     def fetchNearbySSIDs(self,lat='',lng='',radius=500,address=''):
         """Fetch nearby SSIDs from (lat,long) or an address. Radius is 500m by default"""
@@ -283,13 +285,17 @@ if __name__ == "__main__":
                 lat,lng=args.coords.split(",")
                 lat,lng=float(lat),float(lng)
             ssids = wig.fetchNearbySSIDs(address=args.address,lat=lat,lng=lng,radius=args.radius)
-            ssids = sorted(ssids.items(), key=lambda (k,v): v[2])
-            for s in ssids:
-                ssid = s[0]
-                lat,lng,dist = s[1]
-                print "SSID:\t\t'%s'" % ssid
-                print "Co-ords:\t(%f,%f)" % (lat,lng)
-                print "Distance:\t%f metres\n" % dist
+            if 'error' in ssids:
+                print "Error: '%s'" % ssids['error']
+                sys.exit(-1)
+            else:
+                ssids = sorted(ssids.items(), key=lambda (k,v): v[2])
+                for s in ssids:
+                    ssid = s[0]
+                    lat,lng,dist = s[1]
+                    print "SSID:\t\t'%s'" % ssid
+                    print "Co-ords:\t(%f,%f)" % (lat,lng)
+                    print "Distance:\t%f metres\n" % dist
 
     else:
         logging.error("Failed to login to Wigle")

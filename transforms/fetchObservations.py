@@ -53,7 +53,7 @@ def main():
             duration += "%s sec" % seconds
             if seconds > 1:
                 duration +='s'
-        observation = "%s (%s)" % (location, duration)
+        observation = "Drone: %s\nLocation: %s\n(%s)" % (drone,location,duration)
 
         NewEnt=TRX.addEntity("snoopy.Observation", observation )
         #NewEnt=TRX.addEntity("snoopy.DroneLocation", location)

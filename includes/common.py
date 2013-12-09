@@ -1,9 +1,14 @@
 import os
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.expression import Insert
-from sqlalchemy import Column, String
+from sqlalchemy import Column, String, MetaData
 import hashlib
 import glob
+
+#Set path
+snoopyPath=os.path.dirname(os.path.realpath(__file__))
+os.chdir(snoopyPath)
+os.chdir("..")
 
 def get_plugin_names():
     return [ os.path.basename(f)[:-3]
@@ -18,6 +23,21 @@ def get_plugins():
         plugins.append(m)
     return plugins
 
+def get_tables():
+    all_tables = []
+    for plug in get_plugins():
+        tbls = plug.get_tables()
+        for tbl in tbls:
+            all_tables.append(tbl)
+    return all_tables
+
+def create_tables(db):
+        tbls = get_tables()
+        metadata = MetaData(db)
+        for tbl in tbls:
+            tbl.metadata = metadata
+            if not db.dialect.has_table(db.connect(), tbl.name):
+                tbl.create()
 
 @compiles(Insert)
 def replace_string(insert, compiler, **kw):

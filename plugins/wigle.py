@@ -73,25 +73,25 @@ class Snoop(Thread):
                 pass
             else:
                 locations = self.wig.lookupSSID(self.current_lookup)
-
-                if 'error' in locations:
-                    if 'shun' in locations['error']:
-                        logging.info("Wigle account has been shunned, backing off for 20 minutes")
-                        self.ssids_to_lookup.append(self.current_lookup)
-                        for i in range(60*20):
-                            if not self.RUN:
-                                break
-                            time.sleep(1)
-                    elif 'Cookie not set' in locations['error']:
-                        logging.error("No valid Wigle cookie. Login may have failed.")
+                if locations:
+                    if 'error' in locations:
+                        if 'shun' in locations['error']:
+                            logging.info("Wigle account has been shunned, backing off for 20 minutes")
+                            self.ssids_to_lookup.append(self.current_lookup)
+                            for i in range(60*20):
+                                if not self.RUN:
+                                    break
+                                time.sleep(1)
+                        elif 'Cookie not set' in locations['error']:
+                            logging.error("No valid Wigle cookie. Login may have failed.")
+                        else:
+                            logging.error("An error occured whilst looking up SSID '%s', will retry in 5 seconds (Error: '%s')" %(self.current_lookup,locations['error']))
+                            self.ssids_to_lookup.append(self.current_lookup)
+                            time.sleep(5)
                     else:
-                        logging.error("An error occured whilst looking up SSID '%s', will retry in 5 seconds (Error: '%s')" %(self.current_lookup,locations['error']))
-                        self.ssids_to_lookup.append(self.current_lookup)
-                        time.sleep(5)
-                else:
-                    self.recently_found.append(self.current_lookup)
-                    for location in locations:
-                        self.successfully_geolocated.append( location )
+                        self.recently_found.append(self.current_lookup)
+                        for location in locations:
+                            self.successfully_geolocated.append( location )
             time.sleep(2)
 
     def is_db_ready(self):
@@ -139,17 +139,12 @@ class Snoop(Thread):
             return []
 
     @staticmethod
-    def get_ident_tables():
-        """Return a list of tables that requrie identing - i.e. adding drone name and location"""
-        return []
-
-    @staticmethod
     def get_tables():
 
         table = Table('wigle',MetaData(),
-                              Column('ssid', String(length=100) ),
-                              Column('lat', Float(), default=999 ),
-                              Column('long', Float(), default=999 ),
+                              Column('ssid', String(length=100), primary_key=True),
+                              Column('lat', Float(), default=999, primary_key=True, autoincrement=False ),
+                              Column('long', Float(), default=999, primary_key=True, autoincrement=False),
                               Column('last_update', Integer, default=0 ),
                               Column('mac', String(length=18), default='' ),
                               Column('overflow', Integer),

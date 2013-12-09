@@ -51,11 +51,6 @@ class Snoop(Thread):
         return [("session", [self.run_session])]
 
     @staticmethod
-    def get_ident_tables():
-        """Return a list of tables that requrie identing - i.e. adding drone name and location"""
-        return []
-
-    @staticmethod
     def get_tables():
         """This function should return a list of table(s)"""
         run = Table('session', MetaData(),

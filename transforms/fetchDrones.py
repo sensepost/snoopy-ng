@@ -29,10 +29,10 @@ def main():
 
     for drone in results:
         NewEnt=TRX.addEntity("snoopy.Drone", drone)
-        NewEnt.addAdditionalFields("drone","drone", "strict",drone)
+        NewEnt.addAdditionalFields("properties.drone","drone", "strict",drone)
         NewEnt.addAdditionalFields("start_time", "start_time", "strict", start_time)
         NewEnt.addAdditionalFields("end_time", "end_time", "strict", end_time)
-        NewEnt.addAdditionalFields("location", "location", "strict", location)
+        #NewEnt.addAdditionalFields("location", "location", "strict", location)
     TRX.returnOutput()
 
 main()

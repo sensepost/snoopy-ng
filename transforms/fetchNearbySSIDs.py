@@ -30,15 +30,26 @@ def main():
     TRX.parseArguments(sys.argv)
     lat = TRX.getVar("latitude")
     lng = TRX.getVar("longitude")
-    address = TRX.getVar("streetaddress")
+    address = TRX.getVar("longaddress")
 
     logging.debug(lat)
     logging.debug(address)
 
-    wig=Wigle("sourkiss","sourkiss","glenn@sensepost.com")
-    wig.login()
+    try:
+        f = open("wigle_creds.txt", "r")
+        user, passw, email,proxy = f.readline().strip().split(":")
+    except Exception, e:
+        print "ERROR: Unable to read Wigle user & pass, email (and optional proxy) from wigle_creds.txt"
+        print e
+        exit(-1)
+    wig=Wigle(user, passw, email, proxy)
+    if not wig.login():
+        print "ERROR: Unable to login to Wigle with creds from wigle_creds.txt. Please check them."
+        exit(-1)
     ssids = wig.fetchNearbySSIDs(lat=lat,lng=lng,address=address)
-
+    if 'error' in ssids:
+        print "ERROR: Unable to query Wigle. Perhaps your IP/user is shunned. Error was '%s'" % ssids
+        exit(-1)
 
     for s,coords in ssids.iteritems():
         ssid=escape(s)
@@ -55,6 +66,3 @@ def main():
     TRX.returnOutput()
 
 main()
-#me = MaltegoTransform()
-#me.addEntity("maltego.Phrase","hello bob")
-#me.returnOutput()                

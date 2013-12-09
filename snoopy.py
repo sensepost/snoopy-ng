@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 # Glenn Wilkinson 2013
+# glenn@sensepost.com // @glennzw
 import glob
 import os
 import logging
@@ -18,6 +19,7 @@ import random
 from includes.common import *
 import includes.common as common
 import datetime
+from includes.jsonify import objs_to_json
 
 #Set path
 snoopyPath=os.path.dirname(os.path.realpath(__file__))
@@ -47,7 +49,7 @@ class Snoopy():
 
     def __init__(self, _modules, dbms="sqlite:///snoopy.db",
                  server="http://localhost:9001/", drone="unnamedDrone",
-                 key=None, location="unknownLocation", flush_local_data_after_sync=True):
+                 key=None, location="unknownLocation", flush_local_data_after_sync=True, verbose=False):
         #local data
         self.all_data = {}
         self.run = True
@@ -58,6 +60,7 @@ class Snoopy():
         self.run_id = ''.join(random.choice(string.ascii_uppercase + string.digits)
                               for x in range(10))
         self.flush_local_data_after_sync = flush_local_data_after_sync
+        self.verbose = verbose
 
         #Database
         self.tables = {}
@@ -67,6 +70,15 @@ class Snoopy():
         except Exception, e:
             logging.error("Unable to create DB: '%s'.\nPossibly a badly formed dbms schema? See http://docs.sqlalchemy.org/en/rel_0_8/core/engines.html for examples of valid schema" %str(e))
             sys.exit(-1)
+
+        # Create tables for *all* plugins, not just the ones being loaded.
+        tbls = get_tables()
+        #tbls = m.get_tables()
+        for tbl in tbls:
+            tbl.metadata = self.metadata
+            self.tables[tbl.name] = tbl
+            if not self.db.dialect.has_table(self.db.connect(), tbl.name):
+                tbl.create()
 
         self._load_modules(_modules)
 
@@ -85,28 +97,23 @@ class Snoopy():
             mod_params['drone'] = self.drone
             mod_params['location'] = self.location
             mod_params['run_id'] = self.run_id
+            mod_params['key'] = self.key
             m = __import__(mod_name, fromlist="Snoop").Snoop(**mod_params)
+            m.setName(mod_name[8:])
             self.modules.append(m)
 
-            tbls = m.get_tables()
-            for tbl in tbls:
-                tbl.metadata = self.metadata
-                self.tables[tbl.name] = tbl
-                if not self.db.dialect.has_table(self.db.connect(), tbl.name):
-                    tbl.create()
-
-        #Start modules
+            #Start modules
             m.start()
             mod_start_time = os.times()[4]    #Get a system clock indepdent timer
-            logging.info("Waiting for module '%s' to indicate it's ready" % mod_name)
+            logging.info("Waiting for plugin '%s' to indicate it's ready" % mod_name)
             while not m.is_ready() and (os.times()[4] - mod_start_time) < self.MODULE_START_GRACE_TIME:
                 time.sleep(2)
             if not m.is_ready():
-                logging.info("Module '%s' ran out of time to indicate its ready state, moving on to next module." % mod_name)
+                logging.info("Plugin '%s' ran out of time to indicate its ready state, moving on to next plugin." % mod_name)
             else:
-                logging.info("Module '%s' has indicated it's ready." % mod_name)
+                logging.info("Plugin '%s' has indicated it's ready." % mod_name)
 
-        logging.info("Done loading modules, running...")
+        logging.info("Done loading plugin, running...")
 
     def go(self):
         last_update = 0
@@ -137,12 +144,15 @@ class Snoopy():
                 if rawdata is not None and rawdata:
                     tbl, data = rawdata
                     self.all_data.setdefault(tbl, []).extend(data)
+                    if self.verbose:
+                        logging.info("Plugin '%s' emitted %d new datapoints for table '%s'." %(m.name, len(data), tbl))
 
     def write_local_db(self):
-        """Write local sqlite db"""
+        """Write local db"""
         for tbl, data in self.all_data.iteritems():
-            try: 
-                self.tables[tbl].insert().execute(data)
+            try:
+                if data:
+                    self.tables[tbl].insert().execute(data)
             except Exception, e:
                 logging.debug("1. Exception ->'%s'<- whilst attempting to insert data:" %(str(e)) )
                 logging.debug("2. Data was ->'%s'<-" %(str(data)) )
@@ -170,13 +180,9 @@ class Snoopy():
             sync_success = True
             for data in self.chunker(results, self.SYNC_LIMIT):
                 result_as_dict = [dict(e) for e in data]
-                for result in result_as_dict:
-                    for k,v in result.iteritems():
-                        if isinstance(v,datetime.datetime):
-                            result[k] = str(v)
                 data_to_upload = {"table": table_name,
                                            "data": result_as_dict}
-                data_to_upload =  json.dumps(data_to_upload)
+                data_to_upload = objs_to_json(data_to_upload)
                 sync_result = self.web_upload(data_to_upload)
                 if not sync_result:
                     logging.error("Unable to upload %d rows from table '%s'. Moving to next table (check logs for details). " % (len(data), table_name))
@@ -272,30 +278,30 @@ class Snoopy():
         #    return False
 
 def main():
-    message = """
- ___  _  _  _____  _____  ____  _  _
+    message = """ ___  _  _  _____  _____  ____  _  _
 / __)( \( )(  _  )(  _  )(  _ \( \/ )
 \__ \ )  (  )(_)(  )(_)(  )___/ \  /
 (___/(_)\_)(_____)(_____)(__)   (__)
-Version: 2.0
-Code: glenn@sensepost.com
+Version: 2.0 / ZeroNights pre-release (Please do not distribute)
+Code: glenn@sensepost.com // @glennzw
 """
     print message
-    usage = """Usage: %prog [--server <http|xbee://sync_server:[port]> ] [--dbms <database>] [--module <module[:params]>]\nSee the upstart scripts for advice on auto starting on boot."""
+    usage = """Usage: %prog [--server <http|xbee://sync_server:[port]> ] [--dbms <database>] [--plugin <plugin[:params]>]\nSee the upstart scripts for advice on auto starting on boot."""
     parser = OptionParser(usage=usage)
 
     if os.geteuid() != 0:
         logging.warning("Running without root privilages. Some things may not work.")
 
     parser.add_option("-s", "--server", dest="sync_server", action="store", help="Upload data to specified SYNC_SERVER (http://host:port) (Ommitting will save data locally).", default="local")
-    parser.add_option("-d", "--drone", dest="drone", action="store", help="Specify the name of your drone.")#,default="noDroneSpecified")
+    parser.add_option("-d", "--drone", dest="drone", action="store", help="Specify the name of your drone.",default="noDroneSpecified")
     parser.add_option("-k", "--key", dest="key", action="store", help="Specify key for drone name supplied.")
-    parser.add_option("-l", "--location", dest="location", action="store", help="Specify the location of your drone.")#,default="noLocationSpecified")
+    parser.add_option("-l", "--location", dest="location", action="store", help="Specify the location of your drone.",default="noLocationSpecified")
     parser.add_option("-f", "--flush", dest="flush", action="store_true", help="Flush local database after syncronizing with remote server. Default is to not flush.", default=False)
 
     parser.add_option("-b", "--dbms", dest="dbms", action="store", type="string", default="sqlite:///snoopy.db", help="Database to use, in SQL Alchemy format. [default: %default]")
-    parser.add_option("-m", "--plugin", dest="plugin", action="append", help="Plugin to load. Pass parameters with colon. e.g '-m c80211:mon0,aggressive'. Use -i to list available plugins  and their paramters.")
+    parser.add_option("-m", "--plugin", dest="plugin", action="append", help="Plugin to load. Pass parameters with colon. e.g '-m fishingrod:bait=worm,l=10'. Use -i to list available plugins  and their paramters.")
     parser.add_option("-i", "--list", dest="list", action="store_true", help="List all available plugins and exit.", default=False)
+    parser.add_option("-v", "--verbose", dest="verbose", action="store_true", help="Output information about new data.", default=False)
 
     options, args = parser.parse_args()
 
@@ -315,12 +321,15 @@ Code: glenn@sensepost.com
             print "\n"
         sys.exit(0)
 
-    if options.plugin is None:
+    if options.plugin is None and options.sync_server == "local":
         logging.error("Error: You must specify at least one plugin. Try -h for help")
         sys.exit(-1)
 
+    if options.plugin is None and options.sync_server is not "local":
+        logging.info("No plugins specified, will just sync database to remote instance")
+
 #    if (options.drone is None or options.location is None) and not ( len(options.plugin) == 1 and options.plugin[0].split(":")[0] == "server" ) :
-    if options.drone is None or options.location is None:
+    if options.drone is "noDroneSpecified" or options.location is "noLocationSpecified" and options.plugin:
         logging.warning("Drone (-d) or locaion (-l) not specified. May not be required by the plugins you're using.")
         #logging.error("You must specify drone name (-d) and drone location (-l). Does not apply if only running server plugin.")
         #sys.exit(-1)
@@ -329,11 +338,14 @@ Code: glenn@sensepost.com
         sys.exit(-1)
 
     #Check validity of plugins
-    for m in options.plugin:
-        if m.split(":", 1)[0] not in common.get_plugin_names():
-            logging.error("Invalid plugin - '%s'. Use --list to list all available plugins." % (m.split(':', 1)[0]))
-            sys.exit(-1)
-    logging.info("Starting Snoopy with plugins: %s" % (str(options.plugin)))
+    if options.plugin:
+        for m in options.plugin:
+         if m.split(":", 1)[0] not in common.get_plugin_names():
+             logging.error("Invalid plugin - '%s'. Use --list to list all available plugins." % (m.split(':', 1)[0]))
+             sys.exit(-1)
+        logging.info("Starting Snoopy with plugins: %s" % (str(options.plugin)))
+    else:
+        options.plugin = []
 
     newplugs=[]
     for m in options.plugin:
@@ -346,7 +358,7 @@ Code: glenn@sensepost.com
     if options.sync_server == "local":
         logging.info("Capturing local only. Saving to '%s'" % options.dbms)
     Snoopy(newplugs, options.dbms, options.sync_server, options.drone,
-           options.key, options.location, options.flush)
+           options.key, options.location, options.flush, options.verbose)
 
 if __name__ == "__main__":
     main()

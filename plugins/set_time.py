@@ -50,25 +50,13 @@ class Snoop(Thread):
                 }
         return info
 
-
     def get_data(self):
         """Ensure data is returned in the form of a SQL row."""
         return []
 
     @staticmethod
-    def get_ident_tables():
-        """Return a list of tables that requrie identing - i.e. adding drone name and location"""
-        return []
-
-    @staticmethod
     def get_tables():
         """Return the table definitions for this module."""
-        # Make sure to define your table here. Ensure you have a 'sunc' column:
-        # metadata = sa.MetaData()
-        # self.table = sa.Table('sample_table',metadata,
-        #                      sa.Column('sample_row1', sa.String(12), primary_key=True),
-        #                      sa.Column('sample_row2', sa.Unicode, primary_key=True),
-        #                      sa.Column('sunc', sa.Integer, default=0))
         return []
 
 

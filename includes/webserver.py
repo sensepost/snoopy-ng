@@ -11,12 +11,14 @@ from sqlalchemy.exc import *
 import time
 from datetime import datetime
 from auth_handler import auth
+from includes.jsonify import json_to_objs, objs_to_json
+from includes.common import get_tables, create_tables
+
 
 log = logging.getLogger('werkzeug')
 log.setLevel(logging.ERROR)
 
 path="/"
-logging.debug("Loading webserver code")
 
 app = Flask(__name__)
 auth_ = auth()
@@ -70,30 +72,47 @@ def unpack_data(request):
        except Exception,e:
            logging.error(e)
 
+@app.route("/pull/", methods=['GET'])
+@requires_auth
+def pull():
+    global tables
+    global metadata
+    metadata.reflect()
+    all_data = []
+    for table in tables:
+        if "sunc" in table.c:
+            table.metadata = metadata
+            query = table.select()
+            ex = query.execute()
+            results = ex.fetchall()
+            if results:
+                result_as_dict = [dict(e) for e in results]
+                data_to_return = {"table": table.name,
+                                               "data": result_as_dict}
+                data_to_return = json.loads(objs_to_json(data_to_return)) # A bit backward, ne
+                all_data.append(data_to_return)
+   
+    #return type(json.dumps(str(all_data)) 
+    return json.dumps(all_data)
+
+
 # For the collection of data
 @app.route(path, methods=['POST'])
 @requires_auth
 def catch_data():
-    try:
-        jsdata = unpack_data(request)
-        #Dirty hack for converting back to a datetime object. Should rather define via column name? e.g. dt_observation
-        for d in jsdata['data']:
-            for k,v in d.iteritems():
-                try:
-                    tmp=d[k]
-                    d[k]=datetime.strptime(d[k],"%Y-%m-%d %H:%M:%S")
-                except Exception, e:
-                    pass
-        #result = write_local_db(jsdata)
-        server_data.append((jsdata['table'], jsdata['data']  ) )
-
-    except Exception,e:
-        logging.error("Unable to parse JSON from '%s'" % request)
-        print jsdata
-        logging.error(e)
-        return '{"result":"failure", "reason":"Check server logs"}'
+    if request.headers['Content-Type'] == 'application/json':
+        try:
+            jsdata = json_to_objs(request.data)
+        except Exception,e:
+            logging.error("Unable to parse JSON from '%s'" % request)
+            return '{"result":"failure", "reason":"Check server logs"}'
+        else:
+            server_data.append((jsdata['table'], jsdata['data']  )) 
     else:
-        return '{"result":"success", "reason":"None"}'
+        logging.error("Unable to parse JSON from '%s'" % request)
+        return '{"result":"failure", "reason":"Check server logs"}'
+
+    return '{"result":"success", "reason":"Check server logs"}'
 
 def poll_data():
         rtnData=[]
@@ -104,8 +123,28 @@ def poll_data():
         else:
             return []
 
-def run_webserver(port=9001,ip="0.0.0.0"):
+def prep(dbms="sqlite:///snoopy.db"):
+    global db
+    global tables
+    global metadata
+    db=create_engine(dbms)
+    db.debug=True
+    create_tables(db)
+    tables = get_tables()
+    metadata = MetaData(db)
+    metadata.reflect() 
+
+def run_webserver(port=9001,ip="0.0.0.0",_db=None):
     #create_db_tables()
+    global db
+    global tables
+    global metadata
+    db = _db
+    if not _db:
+        dbms="sqlite:///snoopy.db"
+        db=create_engine(dbms)
+    tables = get_tables()
+    metadata = MetaData(db)
     app.run(host=ip, port=port)
 
 if __name__ == "__main__":

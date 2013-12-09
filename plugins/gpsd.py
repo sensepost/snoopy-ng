@@ -81,14 +81,9 @@ class Snoop(Thread):
         while self.data_store:
             rtnData.append(self.data_store.popleft())
         if rtnData:
-            return [("example_table", rtnData)]
+            return [("gpsd", rtnData)]
         else:
             return []
-
-    @staticmethod
-    def get_ident_tables():
-        """Return a list of tables that requrie identing - i.e. adding drone name and location"""
-        return []
 
     @staticmethod
     def get_tables():

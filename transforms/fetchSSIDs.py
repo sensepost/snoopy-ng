@@ -42,8 +42,9 @@ def main():
         ssid=escape(ssid)
         ssid = illegal_xml_re.sub('', ssid)
 
-        NewEnt=TRX.addEntity("snoopy.SSID", ssid)
-        NewEnt.addAdditionalFields("ssid","ssid", "strict",ssid)
+        if not ssid.isspace() and ssid:
+            NewEnt=TRX.addEntity("snoopy.SSID", ssid)
+            NewEnt.addAdditionalFields("properties.ssid","ssid", "strict",ssid)
 
     TRX.returnOutput()
 

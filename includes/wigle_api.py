@@ -22,7 +22,7 @@ import sys
 requests_log = logging.getLogger("requests")
 requests_log.setLevel(logging.ERROR)
 
-url = {'land':"https://wigle.net/", 'login': "https://wigle.net/gps/gps/main/login", 'query':"http://wigle.net/gps/gps/main/confirmquery/"}
+url = {'land':"https://wigle.net/", 'login': "https://wigle.net/gps/gps/main/login", 'query':"https://wigle.net/gps/gps/main/confirmquery/"}
 
 class Wigle(object):
 
@@ -74,8 +74,19 @@ class Wigle(object):
             locations=self.__fetch_locations(results,ssid)
             if (locations != None and locations[0]['overflow'] == 0):
                 for l in locations:
-                    l.update(self._getAddress(l['lat'],l['long']))
+                    address = self._getAddress(l['lat'],l['long'])
+                    retries = 5
+                    while not address and retries > 0:
+                        print address
+                        logging.error("Failed to lookup address, trying again")
+                        address = self._getAddress(l['lat'],l['long'])
+                        retries-=1
+                        time.sleep(0.75)
+                    if address:
+                        l.update(address)
             return locations
+        else:
+            return results
 
     def fetchNearbySSIDs(self,lat='',lng='',radius=500,address=''):
         """Fetch nearby SSIDs from (lat,long) or an address. Radius is 500m by default"""
@@ -225,25 +236,29 @@ class Wigle(object):
     def _getAddress(self,gps_lat,gps_long):
         """Get street address from GPS coordinates"""
         lookup_url = "http://nominatim.openstreetmap.org/reverse?zoom=18&addressdetails=1&format=json&email=%s&lat=%s&lon=%s" %(self.email,gps_lat,gps_long)
-        req = requests.get(lookup_url)
-        if req.status_code == 200 and 'json' in req.headers['content-type']:
-            #addj = json.loads(req.text.encode('UTF8'))
-            addj = json.loads(req.text.encode('utf-8'))
-            longaddress = addj.get('display_name', '')
-            compound_address = addj.get('address', {})
-            city = compound_address.get('city', '')
-            country = compound_address.get('country', '')
-            country_code = compound_address.get('country_code', '')
-            county = compound_address.get('county', '')
-            postcode = compound_address.get('postcode', '')
-            housenumber = compound_address.get('house_number', '')
-            road = compound_address.get('road', '')
-            state = compound_address.get('state', '')
-            suburb = compound_address.get('suburb', '')
-            shortaddress = "%s %s, %s" %(housenumber, road, city)
-            shortaddress = shortaddress.strip()
-
-        return {'longaddress':longaddress, 'shortaddress':shortaddress, 'city':city, 'country':country, 'code':country_code, 'county':county, 'postcode':postcode, 'road':road, 'state':state, 'suburb':suburb}
+        try:
+            req = requests.get(lookup_url)
+            if req.status_code == 200 and 'json' in req.headers['content-type']:
+                #addj = json.loads(req.text.encode('UTF8'))
+                addj = json.loads(req.text.encode('utf-8'))
+                longaddress = addj.get('display_name', '')
+                compound_address = addj.get('address', {})
+                city = compound_address.get('city', '')
+                country = compound_address.get('country', '')
+                country_code = compound_address.get('country_code', '')
+                county = compound_address.get('county', '')
+                postcode = compound_address.get('postcode', '')
+                housenumber = compound_address.get('house_number', '')
+                road = compound_address.get('road', '')
+                state = compound_address.get('state', '')
+                suburb = compound_address.get('suburb', '')
+                shortaddress = "%s %s, %s" %(housenumber, road, city)
+                shortaddress = shortaddress.strip()
+    
+            return {'longaddress':longaddress, 'shortaddress':shortaddress, 'city':city, 'country':country, 'code':country_code, 'county':county, 'postcode':postcode, 'road':road, 'state':state, 'suburb':suburb}
+        except Exception,e:
+            logging.error("Unable to retrieve address from OpenStreetMap - '%s'" % str(e))
+        
 
 
 if __name__ == "__main__":
@@ -283,13 +298,18 @@ if __name__ == "__main__":
                 lat,lng=args.coords.split(",")
                 lat,lng=float(lat),float(lng)
             ssids = wig.fetchNearbySSIDs(address=args.address,lat=lat,lng=lng,radius=args.radius)
-            ssids = sorted(ssids.items(), key=lambda (k,v): v[2])
-            for s in ssids:
-                ssid = s[0]
-                lat,lng,dist = s[1]
-                print "SSID:\t\t'%s'" % ssid
-                print "Co-ords:\t(%f,%f)" % (lat,lng)
-                print "Distance:\t%f metres\n" % dist
+            if 'error' in ssids:
+                print "Error: '%s'" % ssids['error']
+                sys.exit(-1)
+            else:
+                ssids = sorted(ssids.items(), key=lambda (k,v): v[2])
+                for s in ssids:
+                    print s
+                    ssid = s[0]
+                    lat,lng,dist = s[1]
+                    print "SSID:\t\t'%s'" % ssid
+                    print "Co-ords:\t(%f,%f)" % (lat,lng)
+                    print "Distance:\t%f metres\n" % dist
 
     else:
         logging.error("Failed to login to Wigle")

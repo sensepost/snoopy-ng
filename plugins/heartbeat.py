@@ -47,11 +47,6 @@ class Snoop(Thread):
             return []
 
     @staticmethod
-    def get_ident_tables():
-        """Return a list of tables that requrie identing - i.e. adding drone name and location"""
-        return []
-
-    @staticmethod
     def get_tables():
         """Return the table definitions for this module."""
         # Make sure to define your table here. Ensure you have a 'sunc' column:

@@ -16,7 +16,7 @@ logging.basicConfig(level=logging.DEBUG, filename='/tmp/snoopy_server.log',
                 datefmt='%Y-%m-%d %H:%M:%S')
 from includes import webserver
 import os
-#from includes import xbeeserver #TODO
+#from includes import xbeeserver #ProVersion
 
 #def get_plugins():
 #    filename = os.path.split(inspect.getfile(inspect.currentframe()))[1].replace(".py","")
@@ -52,7 +52,7 @@ class Snoop(Thread):
 
     def run(self):
         logging.info("Running wbeserver on '%s:%s'" % (self.ip,self.port))
-        webserver.run_webserver(self.port,self.ip)
+        webserver.run_webserver(self.port,self.ip,self.db)
 
     def is_ready(self):
         #Perform any functions that must complete before plugin runs
@@ -76,20 +76,8 @@ class Snoop(Thread):
         return webserver.poll_data()
 
     @staticmethod
-    def get_ident_tables():
-        """Return a list of tables that requrie identing - i.e. adding drone name and location"""
-        tables = []
-        for plug in get_plugins():
-            tables += plug.get_ident_tables()
-        return tables
-
-    @staticmethod
     def get_tables():
-        tables=[]
-        for plug in get_plugins():
-            tbls = plug.get_tables()
-            tables+=tbls
-        return tables
+        return []
 
 if __name__ == "__main__":
     Snoop().start()

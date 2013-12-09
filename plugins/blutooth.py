@@ -63,12 +63,6 @@ class Snoop(Thread):
         return []
 
     @staticmethod
-    def get_ident_tables():
-        """Return a list of tables that requrie identing - i.e. adding drone name and location"""
-        return []
-        #return ['bluetooth']
-    
-    @staticmethod
     def get_tables():
 
         """Make sure to define your table here"""

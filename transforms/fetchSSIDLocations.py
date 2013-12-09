@@ -26,13 +26,15 @@ def main():
     #s = select([ssids.c.ssid]).where(ssids.c.mac==mac).distinct()
     r = db.execute(s)
     results = r.fetchall()
+    logging.debug(results)
+
     TRX = MaltegoTransform()
 
     illegal_xml_re = re.compile(u'[\x00-\x08\x0b-\x1f\x7f-\x84\x86-\x9f\ud800-\udfff\ufdd0-\ufddf\ufffe-\uffff]')
 
 
     for address in results:
-        if len(results) > 1:
+        if len(results) > 20:
             break
         #ssid = b64decode(ssid)
         #ssid=escape(ssid)
