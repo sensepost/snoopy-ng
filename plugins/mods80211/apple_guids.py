@@ -9,6 +9,8 @@ from scapy.all import *#Dot11ProbeReq, Dot11Elt, TCP, addr2
 from base64 import b64encode
 from includes.common import snoop_hash
 from collections import OrderedDict
+import os
+from includes.fonts import *
 
 MAX_NUM_GUIDs = 1000 #Maximum number of mac:guid paris to keep in memory
 
@@ -23,6 +25,8 @@ class Snarf():
         self.drone = kwargs.get('drone',"no_drone_name_supplied")
         self.run_id = kwargs.get('run_id', "no_run_id_supplied")
         self.location = kwargs.get('location', "no_location_supplied")
+        self.verb = kwargs.get('verbose', 0)
+        self.fname = os.path.splitext(os.path.basename(__file__))[0]
 
     @staticmethod
     def get_tables():
@@ -45,6 +49,8 @@ class Snarf():
                 guid = srl.group(1)
                 if (mac, guid) not in self.apple_guids:
                     self.apple_guids[(mac, guid)] = 0
+                    if self.verb > 0:
+                        logging.info("Sub-plugin %s%s%s observed new GUID: %s%s(%s)%s" % (GR,self.fname,G,GR,guid,mac,G))
 
     def get_data(self):
         tmp = []

@@ -16,6 +16,8 @@ logging.basicConfig(level=logging.DEBUG, filename='/tmp/snoopy_server.log',
                 datefmt='%Y-%m-%d %H:%M:%S')
 from includes import webserver
 import os
+from includes.fonts import *
+
 #from includes import xbeeserver #ProVersion
 
 #def get_plugins():
@@ -45,6 +47,10 @@ class Snoop(Thread):
         self.port = kwargs.get('port',9001)
         self.ip = kwargs.get('ip','0.0.0.0')
         self.db = kwargs.get('dbms',None)
+
+        self.verb = kwargs.get('verbose', 0)
+        self.fname = os.path.splitext(os.path.basename(__file__))[0]
+
         if self.db:
             self.metadata = MetaData(self.db)       #If you need to access the db object. N.B Use for *READ* only.
             self.metadata.reflect()
@@ -66,14 +72,17 @@ class Snoop(Thread):
     def get_parameter_list():
         info = {"info" : "Runs a server - allowing local data to be synchronized remotely.",
                 "parameter_list" : [("port=<int>","The HTTP port to listen on."),
-                                    ("xbee=<int>","The XBee PIN to listen on")
+                                    ("xbee=<int>","The XBee PIN to listen on (see Pro version).")
                                     ]
                 }
 
         return info
 
     def get_data(self):
-        return webserver.poll_data()
+        new_data = webserver.poll_data()
+        if new_data:
+            logging.info("Plugin %s%s%s caught data for %s%d%s tables." % (GR,self.fname,G,GR,len(new_data),G))
+        return new_data
 
     @staticmethod
     def get_tables():

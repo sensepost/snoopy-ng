@@ -11,6 +11,7 @@ import requests
 import json
 from includes.jsonify import json_list_to_objs
 import base64
+from includes.fonts import *
 
 #logging.basicConfig(level=logging.DEBUG)
 
@@ -25,8 +26,15 @@ class Snoop(Thread):
         self.data_store = deque()
         self.last_sync = 0
 
+        self.verb = kwargs.get('verbose', 0)
+        self.fname = os.path.splitext(os.path.basename(__file__))[0]
+
+        if not self.server:
+            logging.error("Please specify a remote server.")
+            exit(-1)
+
         if not self.drone or not self.key:
-            logging.error("Please supply drone (--drone) and key (--key) in order to fetch data from the remote server")
+            logging.error("Please supply drone (--drone) and key (--key) in order to fetch data from the remote server.")
             exit(-1)
    
     def run(self):
@@ -67,8 +75,12 @@ class Snoop(Thread):
             else:
                 if r.status_code == 200:
                     data = json_list_to_objs(r.text)
+                    data_len = 0
                     for row in data:
                         rtnData.append( (row['table'], row['data']) )
+                        data_len += len(row['data'])
+                    if self.verb > 0:
+                        logging.info("Plugin %s%s%s pulled %s%d%s records from remote server." % (GR,self.fname,G,GR,data_len,G))
                 else:
                     logging.error("Error fetching remote data. Response code was %d"%r.status_code)
             self.last_sync = now    #Success or not, we'll wait another n seconds

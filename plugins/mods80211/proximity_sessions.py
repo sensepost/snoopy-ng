@@ -9,6 +9,8 @@ from includes.common import snoop_hash
 logging.getLogger("scapy.runtime").setLevel(logging.ERROR)
 from scapy.all import Dot11ProbeReq
 import datetime
+from includes.fonts import *
+import os
 
 class Snarf():
     """Calculates proximity observations of devices based on probe-requests emitted."""
@@ -27,7 +29,8 @@ class Snarf():
         self.drone = kwargs.get('drone',"no_drone_name_supplied")
         self.run_id = kwargs.get('run_id', "no_run_id_supplied")
         self.location = kwargs.get('location', "no_location_supplied")
-
+        self.verb = kwargs.get('verbose', 0)
+        self.fname = os.path.splitext(os.path.basename(__file__))[0]
 
     @staticmethod
     def get_tables():
@@ -38,8 +41,9 @@ class Snarf():
                       Column('last_obs', DateTime),
                       Column('num_probes', Integer),
                       Column('sunc', Integer, default=0),
-                      Column('location', String(length=60)),
-                      Column('drone', String(length=20), primary_key=True))
+#                      Column('location', String(length=60)),
+#                      Column('drone', String(length=20), primary_key=True)
+                    )
 
         return [table]
 
@@ -59,6 +63,8 @@ class Snarf():
         # New
         if mac not in self.current_proximity_sessions:
             self.current_proximity_sessions[mac] = [t, t, 1, 0]
+            if self.verb > 0:
+                logging.info("Sub-plugin %s%s%s observed new device: %s%s%s" % (GR,self.fname,G,GR,mac, G))
         else:
             #Check if expired
             self.current_proximity_sessions[mac][2] += 1 #num_probes counter

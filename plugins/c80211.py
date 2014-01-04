@@ -73,9 +73,9 @@ class Snoop(Thread):
             sub_plug = __import__(m, fromlist=['Snarf']).Snarf
             desc =  sub_plug.__doc__
             name = m.split(".")[-1]
-            sub_plugs += "\n\t\t\t *%s - %s" % (name,desc)
+            sub_plugs += "\n\t\t\t  *%s - %s" % (name,desc)
 
-        info = {"info" : "This plugin intercepts and processes network traffic. A series of sub-plugins exists within the 'mods' subfolder. Existing sub-plugins are:%s\n"%sub_plugs,
+        info = {"info" : "This plugin intercepts and processes network traffic. A series of sub-plugins exists within the 'mods' subfolder. Existing sub-plugins are:%s"%sub_plugs,
                 "parameter_list" : [("iface=<dev>", "interface to listen on. e.g. -m c80211:iface=wlan3"),
                                     ("mon=[True|False]","First enable monitor mode on <iface>. e.g. -m c80211:iface=wlan3,mon=True. If no <iface> specified, will find first appropriate one."),
                                     ]

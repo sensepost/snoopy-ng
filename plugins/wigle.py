@@ -8,6 +8,7 @@ from collections import deque
 import os
 import time
 from includes.wigle_api import Wigle
+from includes.fonts import *
 logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s %(levelname)s %(filename)s: %(message)s',
                     datefmt='%Y-%m-%d %H:%M:%S')
@@ -25,6 +26,9 @@ class Snoop(Thread):
         self.successfully_geolocated = deque()
         self.recently_found = deque(maxlen=1000)    #We keep a register of the last 1000, to prevent superfluous lookups before results make it into the db
         self.wig = None #Wigle object
+
+        self.verb = kwargs.get('verbose', 0)
+        self.fname = os.path.splitext(os.path.basename(__file__))[0]
 
         # Process arguments passed to module
         self.username = kwargs.get('username')
@@ -57,6 +61,8 @@ class Snoop(Thread):
                         self.ssids_to_lookup.append(ssid)
             self.last_checked = now
             if len(self.ssids_to_lookup) > 0:
+                if self.verb > 0:
+                    logging.info("Plugin %s%s%s has %s%d%s SSIDs to lookup." % (GR,self.fname,G,GR,len(self.ssids_to_lookup),G))
                 logging.debug("SSID lookup queue has %d SSIDs to query" % len(self.ssids_to_lookup))
 
     def run(self):
@@ -92,6 +98,9 @@ class Snoop(Thread):
                         self.recently_found.append(self.current_lookup)
                         for location in locations:
                             self.successfully_geolocated.append( location )
+                        if self.verb > 0:
+                            logging.info("Plugin %s%s%s geolocated SSID '%s%s%s' to %s%d%s possible locations." % (GR,self.fname,G,GR,self.current_lookup,G,GR,len(locations),G))
+
             time.sleep(2)
 
     def is_db_ready(self):

@@ -7,6 +7,8 @@ from threading import Thread
 import time
 import includes.system_info as sysinfo
 import os
+from includes.fonts import *
+
 #logging.basicConfig(level=logging.DEBUG)
 
 class Snoop(Thread):
@@ -18,9 +20,8 @@ class Snoop(Thread):
         self.drone = kwargs.get('drone',"no_drone_name_supplied")
         self.system_statuses = []
 
-#    def run(self):
-#        while self.RUN:
-#            time.sleep(2) #Nothing to do here
+        self.verb = kwargs.get('verbose', 0)
+        self.fname = os.path.splitext(os.path.basename(__file__))[0]
 
     def is_ready(self):
         """Indicates the module is ready, and loading of next module may commence."""
@@ -61,6 +62,9 @@ class Snoop(Thread):
                     pid['drone'] = self.drone
                     pid['timestamp'] = now
    
+                if self.verb > 0:
+                    logging.info("Plugin %s%s%s generated new data." % (GR,self.fname,G))
+
                 if global_stats: 
                     self.system_statuses.append( ('sys_global',[global_stats]) )
                 if busy_pids:

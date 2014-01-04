@@ -11,9 +11,9 @@ os.chdir(snoopyPath)
 os.chdir("..")
 
 def get_plugin_names():
-    return [ os.path.basename(f)[:-3]
+    return sorted([ os.path.basename(f)[:-3]
         for f in glob.glob("./plugins/*.py")
-            if not os.path.basename(f).startswith('__') ]
+            if not os.path.basename(f).startswith('__') ])
 
 def get_plugins():
     plugins = []

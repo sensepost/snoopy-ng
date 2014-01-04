@@ -6,6 +6,7 @@ import sqlalchemy as sa
 from threading import Thread
 import time
 import os
+from includes.fonts import *
 #logging.basicConfig(level=logging.DEBUG)
 
 class Snoop(Thread):
@@ -15,6 +16,8 @@ class Snoop(Thread):
         self.last_heartbeat = 0
         self.heartbeat_freq = 60 # Beat every n seconds
         self.drone = kwargs.get('drone',"no_drone_name_supplied")
+        self.verb = kwargs.get('verbose',0)
+        self.fname = os.path.splitext(os.path.basename(__file__))[0]
 
     def run(self):
         while self.RUN:
@@ -30,7 +33,7 @@ class Snoop(Thread):
     @staticmethod
     def get_parameter_list():
         """List of paramters that can be passed to the module, for user help output."""
-        info = {"info" : "Returns a hearbeat every 60 seconds",
+        info = {"info" : "Returns a hearbeat every 60 seconds.",
                 "parameter_list" : None
                 }
         return info
@@ -42,6 +45,8 @@ class Snoop(Thread):
             timestamp = int(time.time())
             #logging.debug("Heartbeat - %d" % timestamp)
             self.last_heartbeat = now
+            if self.verb > 0:
+                logging.info("Plugin %s%s%s had a beat %s%s❤ %s%s" % (GR,self.fname,G,R,F,NF,G))
             return [('heartbeat',[{'drone':self.drone,'timestamp':timestamp}])]
         else:
             return []

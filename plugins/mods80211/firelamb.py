@@ -14,6 +14,8 @@ import time
 from publicsuffix import PublicSuffixList
 from urlparse import urlparse
 import includes.firelamb_helper as helper
+from includes.fonts import *
+import os
 
 MAX_NUM_SSIDs = 1000 #Maximum number of mac:ssid pairs to keep in memory
 
@@ -22,8 +24,9 @@ class Snarf():
 
     def __init__(self, **kwargs):
         self.drone = kwargs.get('drone',"no_drone_name_supplied")
+        self.verb = kwargs.get('verbose', 0)
+        self.fname = os.path.splitext(os.path.basename(os.path.basename(__file__)))[0]
         self.device_ssids = OrderedDict()
-
         self.psl = PublicSuffixList()
 
 
@@ -89,8 +92,9 @@ class Snarf():
                             eq = name_val.find('=')
                             name = name_val[0:eq].strip()
                             val = name_val[eq+1:].strip()
-
                             self.device_ssids[(ether_src,ip_src,host,name,val,address,useragent,ip_src)] = 0
+                            if self.verb > 0:
+                                logging.info("Sub-plugin %s%s%s observed cookie for domain %s%s (%s)%s" % (GR,self.fname,G,GR,host,ether_src,G))
 
     def get_data(self):
 

@@ -13,19 +13,39 @@ from random import randint
 import datetime
 from threading import Thread
 import datetime
+import json
 
 class Snoop(Thread):
+    """This plugin always runs, but the user is not notified about it."""
     def __init__(self, **kwargs):
         Thread.__init__(self)
         self.RUN = True
-
         # Process arguments passed to module
         self.drone = kwargs.get('drone',"no_drone_name_supplied")
         self.run_id = kwargs.get('run_id', "no_run_id_supplied")
         self.location = kwargs.get('location', "no_location_supplied")
-
+        plugs = kwargs.get('plugs')
         now = datetime.datetime.now() #.strftime("%Y-%m-%d %H:%M:%S")
-        self.run_session = {"run_id" : self.run_id, "drone" : self.drone, "location" : self.location, "start" : now, "end" : now }
+
+        plugs = json.loads(plugs)
+        dd=[]
+        for p in plugs:
+            name = p['name'][8:]
+            pas=[]
+            for k,v in p['params'].iteritems():
+                pas.append("%s=%s" % (k,v))
+            fl = ",".join(pas)
+            rtn = ""
+            if fl:
+                rtn = name + ":" + ",".join(pas)
+            else:
+                rtn = name
+            if name != "run_log":
+                dd.append(rtn)
+        plugins = ",".join(dd)
+
+
+        self.run_session = {"run_id" : self.run_id, "drone" : self.drone, "location" : self.location, "start" : now, "end" : now, 'plugins':plugins }
 
 
     def run(self):
@@ -48,18 +68,19 @@ class Snoop(Thread):
     def get_data(self):
         """Ensure data is returned in the form of a SQL row."""
         self.run_session['end'] = datetime.datetime.now() #.strftime("%Y-%m-%d %H:%M:%S")
-        return [("session", [self.run_session])]
+        return [("sessions", [self.run_session])]
 
     @staticmethod
     def get_tables():
         """This function should return a list of table(s)"""
-        run = Table('session', MetaData(),
+        run = Table('sessions', MetaData(),
                     Column('run_id', String(length=11), primary_key=True),
                     Column('location', String(length=60)),
                     Column('drone', String(length=20)),
                     Column('start', DateTime),
-                    Column('end', DateTime))
-
+                    Column('end', DateTime),
+                    Column('plugins', String(length=200))
+                    )
 
         return [run]
 

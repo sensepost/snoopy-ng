@@ -13,7 +13,7 @@ from datetime import datetime
 from auth_handler import auth
 from includes.jsonify import json_to_objs, objs_to_json
 from includes.common import get_tables, create_tables
-
+from includes.fonts import *
 
 log = logging.getLogger('werkzeug')
 log.setLevel(logging.ERROR)
@@ -139,6 +139,7 @@ def run_webserver(port=9001,ip="0.0.0.0",_db=None):
     global db
     global tables
     global metadata
+
     db = _db
     if not _db:
         dbms="sqlite:///snoopy.db"

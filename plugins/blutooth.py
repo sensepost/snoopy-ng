@@ -5,6 +5,8 @@ import time
 import logging
 from sqlalchemy import MetaData, Table, Column, String, Unicode, Integer
 from threading import Thread
+import os
+from includes.fonts import *
 
 
 logging.basicConfig(level=logging.DEBUG,
@@ -17,16 +19,27 @@ class Snoop(Thread):
         Thread.__init__(self)
         self.devices = {}
         self.RUN = True
+        self.verb = kwargs.get('verbose', 0)
+        self.fname = os.path.splitext(os.path.basename(__file__))[0]
 
     def run(self):
         from bluetooth import discover_devices
         logging.debug("Starting bluetooth module")
+        reported = False
         while self.RUN:
-            for addr, name in discover_devices(lookup_names=True):
-                name = name.decode('utf-8', 'ignore')
-                if (addr, name) not in self.devices:
-                    self.devices[(addr, name)] = 0
-
+            try:
+                for addr, name in discover_devices(lookup_names=True):
+                    name = name.decode('utf-8', 'ignore')
+                    if (addr, name) not in self.devices:
+                        self.devices[(addr, name)] = 0
+                        if self.verb > 0:
+                            logging.info("Sub-plugin %s%s%s observed new device: %s%s%s" % (GR,self.fname,G,GR,mac, G))
+                reported = False
+            except Exception,e:
+                if not reported:
+                    logging.error("Error accessing bluetooth device. Will keep checking for one, but will not report this error again. Check log file for more detail.")
+                    logging.debug(e)
+                    reported = True
             tmptimer = 0
             while self.RUN and tmptimer < 5:
                 time.sleep(0.1)

@@ -16,7 +16,8 @@ from threading import Thread
 import collections
 import csv
 import re
-
+import os
+from includes.fonts import *
 
 class Snoop(Thread):
     """Import from old Snoopy format. Only handles probe_data.txt file for now."""
@@ -33,9 +34,12 @@ class Snoop(Thread):
         self.done_reading = False
         self.done_line = False
 
+        self.verb = kwargs.get('verbose', 0)
+        self.fname = os.path.splitext(os.path.basename(__file__))[0]
+
     def run(self):
 
-        logging.info("Processing '%s' file for data. This may take some time..." % self.probes)
+        logging.info("Plugin %s%s%s processing '%s%s%s' file for data. This may take some time..." % (GR,self.fname,G,GR,self.probes,G))
         with open(self.probes) as f:
             for line in f:
                 self.done_line = False
@@ -98,7 +102,7 @@ class Snoop(Thread):
 
             self.proximity_sessions = {}
             self.done_reading = False #To make it not keep giving the same data over and over
-            logging.info("Done processing '%s' for data. I won't read it again. This plugin is done." % self.probes)
+            logging.info("Done processing '%s%s%s' for data. I won't read it again. This plugin is done." % (GR,self.probes,G))
 
             #2. Prepare ssids
             ssids = []
@@ -120,16 +124,10 @@ class Snoop(Thread):
     @staticmethod
     def get_parameter_list():
         info = {"info" : "Import data from old Snoopy.",
-                "parameter_list" : [ ("probes_file=<probe_data.txt>","Path to probe_dat.txt file."),
+                "parameter_list" : [ ("probes_file=<probe_data.txt>","Path to probe_data.txt file."),
                                    ]
                 }
         return info
-
-
-    @staticmethod
-    def get_ident_tables():
-        """Return a list of tables that requrie identing - i.e. adding drone name and location"""
-        return []
 
     @staticmethod
     def get_tables():

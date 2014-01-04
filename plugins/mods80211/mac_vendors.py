@@ -9,19 +9,22 @@ from scapy.all import Dot11ProbeReq, Dot11Elt
 from includes.common import snoop_hash
 from includes.mac_vendor import mac_vendor
 from collections import OrderedDict
+import os
+from includes.fonts import *
 
 MAX_NUM_VENDORS = 1000
 
 class Snarf():
     """Looks up vendors from MAC addresses."""
 
-#    def __init__(self,hash_macs="False"):
     def __init__(self, **kwargs):
         self.device_vendor = OrderedDict()
         #self.hash_macs = hash_macs
         self.mv = mac_vendor()
 
         self.hash_macs = kwargs.get('hash_macs', False)
+        self.verb = kwargs.get('verbose', 0)
+        self.fname = os.path.splitext(os.path.basename(__file__))[0]
 
     @staticmethod
     def get_tables():
@@ -42,6 +45,8 @@ class Snarf():
 
             if (mac, vendor) not in self.device_vendor:
                 self.device_vendor[(mac, vendor)] = 0
+                if self.verb > 0:
+                    logging.info("Sub-plugin %s%s%s noted device %s%s%s is of type %s%s%s" % (GR,self.fname,G,GR,mac,G,GR,vendor[0],G))
 
     def get_data(self):
 

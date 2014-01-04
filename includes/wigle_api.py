@@ -38,7 +38,7 @@ class Wigle(object):
             sys.exit()
 
         if not self.email:
-            logging.error("Please supply email address to Wigle for OpenStreetView lookups! Exiting")
+            logging.error("Please supply email address to Wigle for OpenStreetView lookups!")
             sys.exit()
 
     def login(self):

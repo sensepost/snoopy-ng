@@ -10,7 +10,7 @@ import json
 import sys
 #import requests # Python 2.7.3rc3 on Maemo cannot use this module
 import urllib2   # In the meantime, we shall use urllib2
-from optparse import OptionParser, OptionGroup
+from optparse import OptionParser, OptionGroup, SUPPRESS_HELP
 from sqlalchemy import create_engine, MetaData, Column, String
 import base64
 #Server
@@ -20,15 +20,18 @@ from includes.common import *
 import includes.common as common
 import datetime
 from includes.jsonify import objs_to_json
+from includes.fonts import *
+
 
 #Set path
 snoopyPath=os.path.dirname(os.path.realpath(__file__))
 os.chdir(snoopyPath)
 
 #Logging
-logging.addLevelName(logging.INFO,"+")
-logging.addLevelName(logging.ERROR,"!")
+logging.addLevelName(logging.INFO,P + "+" + G)
+logging.addLevelName(logging.ERROR,R + "!!" + G)
 logging.addLevelName(logging.DEBUG,"D")
+logging.addLevelName(logging.WARNING, R + "WARNING" + G)
 
 logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s %(levelname)s %(filename)s: %(message)s',
@@ -49,7 +52,7 @@ class Snoopy():
 
     def __init__(self, _modules, dbms="sqlite:///snoopy.db",
                  server="http://localhost:9001/", drone="unnamedDrone",
-                 key=None, location="unknownLocation", flush_local_data_after_sync=True, verbose=False):
+                 key=None, location="unknownLocation", flush_local_data_after_sync=True, verbose=0):
         #local data
         self.all_data = {}
         self.run = True
@@ -57,8 +60,9 @@ class Snoopy():
         self.drone = drone
         self.location = location
         self.key = key
-        self.run_id = ''.join(random.choice(string.ascii_uppercase + string.digits)
-                              for x in range(10))
+        self.run_id = int(random.getrandbits(32))
+        #self.run_id = ''.join(random.choice(string.ascii_uppercase + string.digits)
+        #                      for x in range(10))
         self.flush_local_data_after_sync = flush_local_data_after_sync
         self.verbose = verbose
 
@@ -89,6 +93,7 @@ class Snoopy():
             self.stop()
 
     def _load_modules(self, modules_to_load):
+        str_p = json.dumps(modules_to_load)
         self.modules = []
         for mod in modules_to_load:
             mod_name = mod['name']
@@ -98,6 +103,8 @@ class Snoopy():
             mod_params['location'] = self.location
             mod_params['run_id'] = self.run_id
             mod_params['key'] = self.key
+            mod_params['plugs'] = str_p
+            mod_params['verbose'] = self.verbose
             m = __import__(mod_name, fromlist="Snoop").Snoop(**mod_params)
             m.setName(mod_name[8:])
             self.modules.append(m)
@@ -105,15 +112,18 @@ class Snoopy():
             #Start modules
             m.start()
             mod_start_time = os.times()[4]    #Get a system clock indepdent timer
-            logging.info("Waiting for plugin '%s' to indicate it's ready" % mod_name)
+            tmp_mod_name = mod_name[8:]
+            if mod_name != 'plugins.run_log':
+                logging.info("Waiting for plugin '%s' to indicate it's ready" % tmp_mod_name)
             while not m.is_ready() and (os.times()[4] - mod_start_time) < self.MODULE_START_GRACE_TIME:
                 time.sleep(2)
             if not m.is_ready():
-                logging.info("Plugin '%s' ran out of time to indicate its ready state, moving on to next plugin." % mod_name)
+                logging.info("Plugin '%s' ran out of time to indicate its ready state, moving on to next plugin." % tmp_mod_name)
             else:
-                logging.info("Plugin '%s' has indicated it's ready." % mod_name)
+                if mod_name != 'plugins.run_log':
+                    logging.info("Plugin '%s' has indicated it's ready." % tmp_mod_name)
 
-        logging.info("Done loading plugin, running...")
+        logging.info("Done loading plugins, running...")
 
     def go(self):
         last_update = 0
@@ -144,8 +154,8 @@ class Snoopy():
                 if rawdata is not None and rawdata:
                     tbl, data = rawdata
                     self.all_data.setdefault(tbl, []).extend(data)
-                    if self.verbose:
-                        logging.info("Plugin '%s' emitted %d new datapoints for table '%s'." %(m.name, len(data), tbl))
+                    if self.verbose > 1 and m.name != 'run_log':
+                        logging.info("Plugin '%s%s%s' emitted %s%d%s new datapoints for table '%s%s%s'." %(GR,m.name,G, GR,len(data),G, GR,tbl,G))
 
     def write_local_db(self):
         """Write local db"""
@@ -169,6 +179,9 @@ class Snoopy():
     def sync_to_server(self):
         """Sync tables that have the 'sunc' column available"""
 
+        data_len = 0
+        num_tabs = 0
+        sync_success = False
         for table_name in self.tables:
             table = self.tables[table_name]
             if "sunc" not in table.c:
@@ -177,7 +190,9 @@ class Snoopy():
             query = table.select(table.c.sunc == 0)
             ex = query.execute()
             results = ex.fetchall()
-            sync_success = True
+            data_len += len(results)
+            if results:
+                num_tabs += 1
             for data in self.chunker(results, self.SYNC_LIMIT):
                 result_as_dict = [dict(e) for e in data]
                 data_to_upload = {"table": table_name,
@@ -188,55 +203,14 @@ class Snoopy():
                     logging.error("Unable to upload %d rows from table '%s'. Moving to next table (check logs for details). " % (len(data), table_name))
                     break
                 else:
+                    sync_success = True
                     if self.flush_local_data_after_sync:
                         table.delete().execute()
                     else:
                         table.update(values={table.c.sunc:1}).execute()
 
-
-    def sync_to_server_OLD(self):
-        """Sync tables that have the 'sunc' column available"""
-        data_to_upload = [] #JSON list
-        total_rows_to_upload = 0
-        for table_name in self.tables: #self.metadata.sorted_tables:
-            table = self.tables[table_name]
-            if "sunc" in table.c:
-                query = table.select(table.c.sunc == 0)
-                ex = query.execute()
-                results = ex.fetchall()
-                if results:
-                    total_rows_to_upload += len(results)
-                    result_as_dict = [dict(e) for e in results]
-                    for result in result_as_dict:
-                        for k,v in result.iteritems():
-                            if isinstance(v,datetime.datetime):
-                                result[k] = str(v) #e.g. for datetime.datetime
-                    data_to_upload.append({"table": table_name,
-                                           "data": result_as_dict})
-            else:
-                logging.debug("Ignoring table %s (no 'sunc' column)"%table)
-
-        if data_to_upload:
-            sync_success = True
-            for data in chunker(data_to_upload, SYNC_LIMIT):
-                data = json.dumps(data)
-                sync_result = self.web_upload(data)
-                if not sync_result:
-                    sync_success = False
-
-            # If web sync was successful, mark local db as sunc
-            if sync_success:
-                for table_name in self.tables: #self.metadata.sorted_tables:
-                    table = self.tables[table_name]
-                    upd = table.update(values={table.c.sunc:1})
-                    upd.execute()
-                    if "sunc" in table.c and self.flush_local_data_after_sync:
-                            #logging.debug("Flushing local data storage")
-                            #self.db.execute("DELETE FROM {0}".format(table_name))
-                            numdel = table.delete().execute()
-            else:
-                logging.debug("Error attempting to upload %d rows of data :(" %
-                              total_rows_to_upload)
+        if data_len > 0 and self.verbose > 0 and sync_success:
+            logging.info("Snoopy successfully %s%s%s %s%d%s elements over %s%d%s tables." % (GR,"sunc",G,GR,data_len,G,GR,num_tabs,G))
 
     def web_upload(self, json_data):
         base64string = base64.encodestring('%s:%s' % (self.drone, self.key)).replace('\n', '')
@@ -282,11 +256,52 @@ def main():
 / __)( \( )(  _  )(  _  )(  _ \( \/ )
 \__ \ )  (  )(_)(  )(_)(  )___/ \  /
 (___/(_)\_)(_____)(_____)(__)   (__)
-Version: 2.0 / ZeroNights pre-release (Please do not distribute)
-Code: glenn@sensepost.com // @glennzw
-"""
+                        %sVersion: 2.0%s
+%sCode%s:\t glenn@sensepost.com // @glennzw
+%sVisit%s:\t www.sensepost.com // @sensepost
+%sLicense%s: Non-commercial use
+""" %(BB,NB,GR,G,GR,G,GR,G)
     print message
-    usage = """Usage: %prog [--server <http|xbee://sync_server:[port]> ] [--dbms <database>] [--plugin <plugin[:params]>]\nSee the upstart scripts for advice on auto starting on boot."""
+    if not os.path.isfile('.acceptedlicense'):
+        lf = open('LICENSE.txt', 'r')
+        license_text = lf.read()
+        msg = """
+This appears to be the first time you're running Snoopy, welcome!
+We'd like you to agree to abide by our license before you proceed.
+It basically states that you can use Snoopy for non-commercial use.
+We have a separate license available for commercial use, which
+includes extra functionality such as:
+    * Syncing data via XBee
+    * Advanced plugins
+    * Extra transforms
+    * Web interface
+    * Prebuilt drones
+
+Get in contact (%sglenn@sensepost.com / research@sensepost.com%s) if
+you'd like to engage with us.
+
+Anyway, the license is below, please accept it
+before continuing.
+""" % (GR,G)
+        print msg
+        print C + license_text + G
+        res = raw_input("Do you agree to abide by the license [Y/n]? ")
+        res = res.strip().lower()
+        if res != "y":
+            print R + F + "License agreement not accepted. Exiting" + G + NF
+        else:
+            print "License agreement accepted, thanks!"
+            lgo = open('./setup/sn.txt','r')
+            txt = lgo.read()
+            print GR + txt + G
+            print "Please run Snoopy again... Check the README file for help."
+            fl2 = open('.acceptedlicense','w')
+            fl2.write("Accepted")
+            fl2.close
+        sys.exit(-1)
+
+
+    usage = """Usage: %prog [--plugin <plugin[:params]>] [--server <http://sync_server:[port]> ] [--dbms <database>]\nSee the README file for further information and examples."""
     parser = OptionParser(usage=usage)
 
     if os.geteuid() != 0:
@@ -301,9 +316,32 @@ Code: glenn@sensepost.com // @glennzw
     parser.add_option("-b", "--dbms", dest="dbms", action="store", type="string", default="sqlite:///snoopy.db", help="Database to use, in SQL Alchemy format. [default: %default]")
     parser.add_option("-m", "--plugin", dest="plugin", action="append", help="Plugin to load. Pass parameters with colon. e.g '-m fishingrod:bait=worm,l=10'. Use -i to list available plugins  and their paramters.")
     parser.add_option("-i", "--list", dest="list", action="store_true", help="List all available plugins and exit.", default=False)
-    parser.add_option("-v", "--verbose", dest="verbose", action="store_true", help="Output information about new data.", default=False)
+    parser.add_option("--nyan", action = "store_true", dest = "ny", default = False, help=SUPPRESS_HELP)
+    #parser.add_option("-v", "--verbose", dest="verbose", action="store_true", help="Output information about new data.", default=False)
+    parser.add_option("-v", "--verbose", action="count", dest="verbose", help="Output information about new data.", default=0)
+    parser.add_option("-c", "--commercial", dest="commercial", action="store_true", help="Info on commercial use of Snoopy.", default=False)
 
     options, args = parser.parse_args()
+
+    if options.ny:
+        from subprocess import Popen
+        proc  = Popen(([base64.decodestring("dGVsbmV0"), base64.decodestring("bnlhbi5ob3dlcy5uZXQubno=")]))
+        sys.exit(0)
+
+    if options.commercial:
+        print """We have a separate license available for commercial use, which
+includes extra functionality such as:
+    * Syncing data via XBee
+    * Advanced plugins
+    * Extra transforms
+    * Web interface
+    * Prebuilt drones
+
+Get in contact (%sglenn@sensepost.com / research@sensepost.com%s) if
+you'd like to engage with us.""" % (GR,G)
+        sys.exit()
+
+
 
     plugins = common.get_plugins()
     if options.list:
@@ -312,13 +350,14 @@ Code: glenn@sensepost.com // @glennzw
             plugin_info = plug.get_parameter_list()
             info, param_list = plugin_info.get('info'), plugin_info.get('parameter_list')
             name = str(plug).split(".")[1]
-            print "\tName:\t\t%s" %name
-            print "\tInfo:\t\t%s" %info
-            if param_list:
-                for p in param_list:
-                    print "\tParameter: \t%s" %p[0]
-                    print "\t\t\t%s" % p[1]
-            print "\n"
+            if name != "run_log":
+                print GR + "\tName:" + G + BB + B  + "\t\t%s" %name + NB + G
+                print GR + "\tInfo:" + G + "\t\t%s"  %info 
+                if param_list:
+                    for p in param_list:
+                        print GR + "\tParameter:" + G + "\t%s" %p[0]
+                        print G + "\t\t\t ↳ %s" % p[1]
+                print "\n"
         sys.exit(0)
 
     if options.plugin is None and options.sync_server == "local":
@@ -343,9 +382,12 @@ Code: glenn@sensepost.com // @glennzw
          if m.split(":", 1)[0] not in common.get_plugin_names():
              logging.error("Invalid plugin - '%s'. Use --list to list all available plugins." % (m.split(':', 1)[0]))
              sys.exit(-1)
-        logging.info("Starting Snoopy with plugins: %s" % (str(options.plugin)))
+        plugin_list = ', '.join(s.partition(':')[0] for s in options.plugin)
+        logging.info("Starting Snoopy with plugins: %s%s%s" % (GR, plugin_list, G))
     else:
         options.plugin = []
+
+    options.plugin.append('run_log')
 
     newplugs=[]
     for m in options.plugin:

@@ -7,6 +7,8 @@ from types import *
 import logging
 import sys
 
+#TODO: Implement timeout mechansim
+
 def run_program(rcmd):
     """
     Runs a program 'executable' with list of paramters 'executable_options'. Returns the process, or None if failed. Use:
