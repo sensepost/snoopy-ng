@@ -32,6 +32,7 @@ logging.addLevelName(logging.INFO,P + "+" + G)
 logging.addLevelName(logging.ERROR,R + "!!" + G)
 logging.addLevelName(logging.DEBUG,"D")
 logging.addLevelName(logging.WARNING, R + "WARNING" + G)
+logging.addLevelName(logging.CRITICAL, R + "CRITICAL ERROR" + G)
 
 logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s %(levelname)s %(filename)s: %(message)s',
@@ -164,9 +165,7 @@ class Snoopy():
                 if data:
                     self.tables[tbl].insert().execute(data)
             except Exception, e:
-                logging.debug("1. Exception ->'%s'<- whilst attempting to insert data:" %(str(e)) )
-                logging.debug("2. Data was ->'%s'<-" %(str(data)) )
-                logging.debug("3. Sleeping for 5 secs")
+                logging.error("Exception whilst trying to insert data, will sleep for 5 seconds then continue. Exception was:\n\n%s%s%s\n\n" % (R,str(e),G))
                 time.sleep(5)
             else:
                 #Clean up local datastore

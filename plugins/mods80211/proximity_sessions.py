@@ -41,8 +41,8 @@ class Snarf():
                       Column('last_obs', DateTime),
                       Column('num_probes', Integer),
                       Column('sunc', Integer, default=0),
-#                      Column('location', String(length=60)),
-#                      Column('drone', String(length=20), primary_key=True)
+                      Column('location', String(length=60)),
+                      Column('drone', String(length=20), primary_key=True)
                     )
 
         return [table]

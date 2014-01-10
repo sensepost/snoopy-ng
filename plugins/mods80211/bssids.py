@@ -9,6 +9,8 @@ from scapy.all import Dot11Beacon, Dot11Elt
 from base64 import b64encode
 from includes.common import snoop_hash
 from collections import OrderedDict
+import os
+from includes.fonts import *
 
 #N.B If you change b64mode to False, you should probably change
 # the ssid colum to type Unicode.
@@ -17,13 +19,15 @@ b64mode = False
 MAX_NUM_SSIDs = 1000 #Maximum number of mac:ssid pairs to keep in memory
 
 class Snarf():
-    """Extract BSSIDs (i.e. Access Points"""
+    """Extract BSSIDs (i.e. Access Points)"""
 
     def __init__(self, **kwargs):
         self.device_ssids = OrderedDict()
         #self.hash_macs = hash_macs
 
         self.hash_macs = kwargs.get('hash_macs', False)
+        self.verb = kwargs.get('verbose', 0)
+        self.fname = os.path.splitext(os.path.basename(__file__))[0]
 
     @staticmethod
     def get_tables():
@@ -45,6 +49,8 @@ class Snarf():
                 ssid = p[Dot11Elt].info.decode('utf-8', 'ignore')
             if (mac, ssid) not in self.device_ssids:
                 self.device_ssids[(mac, ssid)] = 0
+                if self.verb > 0:
+                    logging.info("Sub-plugin %s%s%s observed new Access Point: %s%s%s" % (GR,self.fname,G,GR,mac, G))
 
     def get_data(self):
         tmp = []
