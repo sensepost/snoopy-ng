@@ -7,7 +7,7 @@ import re
 from sqlalchemy import MetaData, Table, Column, String, Integer, DateTime
 from includes.common import snoop_hash
 logging.getLogger("scapy.runtime").setLevel(logging.ERROR)
-from scapy.all import Dot11ProbeReq
+from scapy.all import Dot11Beacon, Dot11Elt
 import datetime
 from includes.fonts import *
 import os
@@ -35,11 +35,11 @@ class Snarf():
     @staticmethod
     def get_tables():
         """Make sure to define your table here"""
-        table = Table('proximity_sessions', MetaData(),
+        table = Table('access_points', MetaData(),
                       Column('mac', String(64), primary_key=True), #Len 64 for sha256
                       Column('first_obs', DateTime, primary_key=True, autoincrement=False),
+                      Column('ssid', String(64)),
                       Column('last_obs', DateTime),
-                      Column('num_probes', Integer),
                       Column('sunc', Integer, default=0),
                       #Column('location', String(length=60)),
                       #Column('drone', String(length=20), primary_key=True)
@@ -49,12 +49,15 @@ class Snarf():
 
     def proc_packet(self,p):
         self.MOST_RECENT_TIME = int(p.time)
-        if not p.haslayer(Dot11ProbeReq):
+        if not p.haslayer(Dot11Beacon):
             return
         mac = re.sub(':', '', p.addr2)
         if self.hash_macs == "True":
             mac = snoop_hash(mac)
         t = int(p.time)
+        if p[Dot11Elt].info != '':
+            ssid = p[Dot11Elt].info.decode('utf-8', 'ignore')
+        
         try:
             sig_str = -(256-ord(p.notdecoded[-4:-3])) #TODO: Use signal strength
         except:
@@ -62,21 +65,21 @@ class Snarf():
             logging.error(p.summary())
         # New
         if mac not in self.current_proximity_sessions:
-            self.current_proximity_sessions[mac] = [t, t, 1, 0]
+            self.current_proximity_sessions[(mac,ssid)] = [t, t, 1, 0]
             if self.verb > 0:
                 logging.info("Sub-plugin %s%s%s observed new device: %s%s%s" % (GR,self.fname,G,GR,mac, G))
         else:
             #Check if expired
-            self.current_proximity_sessions[mac][2] += 1 #num_probes counter
-            first_obs = self.current_proximity_sessions[mac][0]
-            last_obs = self.current_proximity_sessions[mac][1]
-            num_probes = self.current_proximity_sessions[mac][2]
+            self.current_proximity_sessions[(mac,ssid)][2] += 1 #num_probes counter
+            first_obs = self.current_proximity_sessions[(mac,ssid)][0]
+            last_obs = self.current_proximity_sessions[(mac,ssid)][1]
+            num_probes = self.current_proximity_sessions[(mac,ssid)][2]
             if (t - last_obs) >= self.DELTA_PROX:
-                self.closed_proximity_sessions.append((mac, first_obs, last_obs, num_probes)) #Terminate old prox session
-                self.current_proximity_sessions[mac] = [t, t, 1, 0] #Create new prox session
+                self.closed_proximity_sessions.append((mac, ssid, first_obs, last_obs, num_probes)) #Terminate old prox session
+                self.current_proximity_sessions[(mac,ssid)] = [t, t, 1, 0] #Create new prox session
             else:
-                self.current_proximity_sessions[mac][1] = t
-                self.current_proximity_sessions[mac][3] = 0 #Mark as require db sync
+                self.current_proximity_sessions[(mac,ssid)][1] = t
+                self.current_proximity_sessions[(mac,ssid)][3] = 0 #Mark as require db sync
 
     def get_data(self):
         """Ensure data is returned in the form (tableName,[colname:data,colname:data]) """
@@ -92,30 +95,32 @@ class Snarf():
             num_probes=v[2]
             t=self.MOST_RECENT_TIME
             if(t - last_obs >= self.DELTA_PROX):
-                self.closed_proximity_sessions.append((mac,first_obs,t,num_probes))
-                todel.append(mac)
+                self.closed_proximity_sessions.append((mac,ssid,first_obs,t,num_probes))
+                todel.append((mac,ssid))
         for mac in todel:
-            del(self.current_proximity_sessions[mac])
+            del(self.current_proximity_sessions[(mac,ssid)])
         #1. Open Prox Sessions
         tmp_open_prox_sessions=[]  
-        for mac,v in self.current_proximity_sessions.iteritems():
+        for macssid,v in self.current_proximity_sessions.iteritems():
+            mac,ssid=macssid
             first_obs,last_obs,num_probes=v[0],v[1],v[2]
             first_obs,last_obs = datetime.datetime.fromtimestamp(first_obs), datetime.datetime.fromtimestamp(last_obs)
             if v[3] == 0:
-                tmp_open_prox_sessions.append({"mac":mac,"first_obs":first_obs,"last_obs":last_obs,"num_probes":num_probes})#, "drone":self.drone, "location":self.location})
+                tmp_open_prox_sessions.append({"mac":mac,"ssid":ssid,"first_obs":first_obs,"last_obs":last_obs,"num_probes":num_probes})#, "drone":self.drone, "location":self.location})
         #2. Closed Prox Sessions
         tmp_closed_prox_sessions=[] 
         for i in range(len(self.closed_proximity_sessions)):
-            mac,first_obs,last_obs,num_probes=self.closed_proximity_sessions.popleft()
+            macssid,first_obs,last_obs,num_probes=self.closed_proximity_sessions.popleft()
+            mac,ssid=macssid
             first_obs,last_obs = datetime.datetime.fromtimestamp(first_obs), datetime.datetime.fromtimestamp(last_obs)
-            tmp_closed_prox_sessions.append( {"mac":mac,"first_obs":first_obs,"last_obs":last_obs,"num_probes":num_probes})#, "drone":self.drone, "location":self.location} )
+            tmp_closed_prox_sessions.append( {"mac":mac,"ssid":ssid,"first_obs":first_obs,"last_obs":last_obs,"num_probes":num_probes})#, "drone":self.drone, "location":self.location} )
         if( len(tmp_open_prox_sessions+tmp_closed_prox_sessions) > 0 ):
             #data.append(   (table,columns,tmp+tmp2)    )
             #Set flag to indicate data has been fetched:
             for i in tmp_open_prox_sessions:
                 mac=i['mac']    
-                self.current_proximity_sessions[mac][3]=1 #Mark it has having been retrieved, so we don't resend until it changes
+                self.current_proximity_sessions[(mac,ssid)][3]=1 #Mark it has having been retrieved, so we don't resend until it changes
 
             #return None
-            return ("proximity_sessions",tmp_open_prox_sessions+tmp_closed_prox_sessions)
+            return ("access_points",tmp_open_prox_sessions+tmp_closed_prox_sessions)
 

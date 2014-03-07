@@ -1,7 +1,7 @@
 import os
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.expression import Insert
-from sqlalchemy import Column, String, MetaData
+from sqlalchemy import Column, String, MetaData, Integer
 import hashlib
 import glob
 
@@ -28,6 +28,7 @@ def get_tables():
     for plug in get_plugins():
         tbls = plug.get_tables()
         for tbl in tbls:
+            tbl.append_column( Column('run_id', Integer) ) #Every entry generated gets the run id included. This is for joins, as well as tracking which drone created which data
             all_tables.append(tbl)
     return all_tables
 

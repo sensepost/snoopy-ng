@@ -38,7 +38,7 @@ class Wigle(object):
             sys.exit()
 
         if not self.email:
-            logging.error("Please supply email address to Wigle for OpenStreetView lookups! Exiting")
+            logging.error("Please supply email address to Wigle for OpenStreetView lookups!")
             sys.exit()
 
     def login(self):
@@ -70,11 +70,20 @@ class Wigle(object):
         payload={'longrange1': '', 'longrange2': '', 'latrange1': '', 'latrange2':'', 'statecode': '', 'Query': '', 'addresscode': '', 'ssid': ssid.replace("_","\_"), 'lastupdt': '', 'netid': '', 'zipcode':'','variance': ''}
 
         results =self.__queryWigle(payload)
-        if results and 'error' not in results:
+        if results: #and 'error' not in results:
             locations=self.__fetch_locations(results,ssid)
             if (locations != None and locations[0]['overflow'] == 0):
                 for l in locations:
-                    l.update(self._getAddress(l['lat'],l['long']))
+                    address = self._getAddress(l['lat'],l['long'])
+                    retries = 5
+                    while not address and retries > 0:
+                        print address
+                        logging.error("Failed to lookup address, trying again")
+                        address = self._getAddress(l['lat'],l['long'])
+                        retries-=1
+                        time.sleep(0.75)
+                    if address:
+                        l.update(address)
             return locations
         else:
             return results
@@ -104,6 +113,10 @@ class Wigle(object):
             logging.error("Unable to determine GPS co-ordinates")
         else:
             lat1,lng1,lat2,lng2 = self.__getSquare(lat,lng,radius)
+            lat1 = round(lat1,11) #Wigle nuance
+            lat2 = round(lat2,11)
+            lng1 = round(lng1,11)
+            lng2 = round(lng2,11)
             logging.debug("[-] Looking for SSIDs near by (%s %s)" %(lat,lng))
             payload={'longrange1': lng1, 'longrange2': lng2, 'latrange1': lat1, 'latrange2':lat2, 'statecode': '', 'Query': '', 'addresscode': '', 'ssid': '', 'lastupdt': '', 'netid': '', 'zipcode':'','variance': '0.010'}
             results = self.__queryWigle(payload)
@@ -148,6 +161,11 @@ class Wigle(object):
                     logging.debug("An error occured whilst processing Wigle query.")
                     return {'error':'Text response contained "An Error has occurred"'}
                 elif('Showing stations' in r.text):
+                    # Lines below are useful when debugging failure, e.g. when Wigle changes their HTML
+                    #logging.debug("Writing HTML response to /tmp/%s.html" % payload['ssid'] ) #DD
+                    #f = open("/tmp/%s.html"%payload['ssid'], 'w') #DD
+                    #f.write(r.text) #DD
+                    #f.close() #DD
                     return r.text
                 else:
                     logging.debug("Unknown error occured")
@@ -171,7 +189,7 @@ class Wigle(object):
             try:
                 row=line.findAll('td')
                 if( row[2].string.lower() == ssid.lower()):
-                    locations.append({'ssid':ssid,'mac':row[1].string, 'last_seen':row[9].string, 'last_update':row[15].string, 'lat':float(row[12].string), 'long':float(row[13].string),'overflow':overflow})
+                    locations.append({'ssid':ssid,'mac':row[1].string, 'last_seen':row[9].string, 'last_update':row[14].string, 'lat':float(row[12].string), 'long':float(row[13].string),'overflow':overflow})
             except Exception:
                 pass
         # Sort by last_update
@@ -227,28 +245,33 @@ class Wigle(object):
     def _getAddress(self,gps_lat,gps_long):
         """Get street address from GPS coordinates"""
         lookup_url = "http://nominatim.openstreetmap.org/reverse?zoom=18&addressdetails=1&format=json&email=%s&lat=%s&lon=%s" %(self.email,gps_lat,gps_long)
-        req = requests.get(lookup_url)
-        if req.status_code == 200 and 'json' in req.headers['content-type']:
-            #addj = json.loads(req.text.encode('UTF8'))
-            addj = json.loads(req.text.encode('utf-8'))
-            longaddress = addj.get('display_name', '')
-            compound_address = addj.get('address', {})
-            city = compound_address.get('city', '')
-            country = compound_address.get('country', '')
-            country_code = compound_address.get('country_code', '')
-            county = compound_address.get('county', '')
-            postcode = compound_address.get('postcode', '')
-            housenumber = compound_address.get('house_number', '')
-            road = compound_address.get('road', '')
-            state = compound_address.get('state', '')
-            suburb = compound_address.get('suburb', '')
-            shortaddress = "%s %s, %s" %(housenumber, road, city)
-            shortaddress = shortaddress.strip()
-
-        return {'longaddress':longaddress, 'shortaddress':shortaddress, 'city':city, 'country':country, 'code':country_code, 'county':county, 'postcode':postcode, 'road':road, 'state':state, 'suburb':suburb}
+        try:
+            req = requests.get(lookup_url)
+            if req.status_code == 200 and 'json' in req.headers['content-type']:
+                #addj = json.loads(req.text.encode('UTF8'))
+                addj = json.loads(req.text.encode('utf-8'))
+                longaddress = addj.get('display_name', '')
+                compound_address = addj.get('address', {})
+                city = compound_address.get('city', '')
+                country = compound_address.get('country', '')
+                country_code = compound_address.get('country_code', '')
+                county = compound_address.get('county', '')
+                postcode = compound_address.get('postcode', '')
+                housenumber = compound_address.get('house_number', '')
+                road = compound_address.get('road', '')
+                state = compound_address.get('state', '')
+                suburb = compound_address.get('suburb', '')
+                shortaddress = "%s %s, %s" %(housenumber, road, city)
+                shortaddress = shortaddress.strip()
+    
+            return {'longaddress':longaddress, 'shortaddress':shortaddress, 'city':city, 'country':country, 'code':country_code, 'county':county, 'postcode':postcode, 'road':road, 'state':state, 'suburb':suburb}
+        except Exception,e:
+            logging.error("Unable to retrieve address from OpenStreetMap - '%s'" % str(e))
+        
 
 
 if __name__ == "__main__":
+    #logging.basicConfig(level=logging.DEBUG)
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("-s", "--ssid", help="Fetch SSID location.")
@@ -258,20 +281,21 @@ if __name__ == "__main__":
     parser.add_argument("-u", "--user", help="Wigle username")
     parser.add_argument("-p", "--password", help="Wigle password")
     parser.add_argument("-e", "--email", help="Your email, for OpenStreetView lookups (be polite, use your real one)")
+    parser.add_argument("-x", "--proxy", help="Proxy to use.")
     args = parser.parse_args()
 
     if not args.ssid and not (args.coords or args.address):
         print "[!] No operation specified! Try --help."
         sys.exit(-1)
 
-    wig = Wigle(args.user,args.password,args.email)
+    wig = Wigle(args.user,args.password,args.email,args.proxy)
     print "[+] Logging into Wigle..."
     if wig.login():
         if args.ssid:
             print "[+] Looking up address of '%s'..."%args.ssid
             results = wig.lookupSSID(args.ssid)
             if 'error' in results:
-                print "Failed!"
+                print "Error observed! Failed to lookup!"
                 sys.exit(-1)
             if results[0]['overflow']:
                 print "[!] Too many results for '%s'"%args.ssid
@@ -291,6 +315,7 @@ if __name__ == "__main__":
             else:
                 ssids = sorted(ssids.items(), key=lambda (k,v): v[2])
                 for s in ssids:
+                    print s
                     ssid = s[0]
                     lat,lng,dist = s[1]
                     print "SSID:\t\t'%s'" % ssid

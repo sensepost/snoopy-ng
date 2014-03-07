@@ -67,7 +67,7 @@ class Snoop(Thread):
                    'Z-Auth': self.key, 'Z-Drone': self.drone, 'Authorization':'Basic %s' % base64string}
         rtnData = []
         now = int(os.times()[4])
-        if now > self.last_sync + self.sync_freq:
+        if abs(now - self.last_sync) > self.sync_freq:
             try:
                 r = requests.get(self.server+"pull/", headers=headers)
             except Exception,e:

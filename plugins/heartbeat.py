@@ -15,7 +15,6 @@ class Snoop(Thread):
         self.RUN = True
         self.last_heartbeat = 0
         self.heartbeat_freq = 60 # Beat every n seconds
-        self.drone = kwargs.get('drone',"no_drone_name_supplied")
         self.verb = kwargs.get('verbose',0)
         self.fname = os.path.splitext(os.path.basename(__file__))[0]
 
@@ -41,13 +40,13 @@ class Snoop(Thread):
     def get_data(self):
         """Ensure data is returned in the form of a SQL row."""
         now = int(os.times()[4])
-        if now > self.last_heartbeat + self.heartbeat_freq:
+        if abs(now - self.last_heartbeat) > self.heartbeat_freq:
             timestamp = int(time.time())
             #logging.debug("Heartbeat - %d" % timestamp)
             self.last_heartbeat = now
             if self.verb > 0:
                 logging.info("Plugin %s%s%s had a beat %s%s❤ %s%s" % (GR,self.fname,G,R,F,NF,G))
-            return [('heartbeat',[{'drone':self.drone,'timestamp':timestamp}])]
+            return [('heartbeat',[{'timestamp':timestamp}])]
         else:
             return []
 
@@ -57,7 +56,7 @@ class Snoop(Thread):
         # Make sure to define your table here. Ensure you have a 'sunc' column:
         metadata = sa.MetaData()
         table = sa.Table('heartbeat',metadata,
-                              sa.Column('drone', sa.String(length=20)),
+                              #sa.Column('drone', sa.String(length=20)),
                               sa.Column('timestamp', sa.Integer, primary_key=True, autoincrement=False),
                               sa.Column('sunc', sa.Integer, default=0))
         return [table]

@@ -14,6 +14,9 @@ import datetime
 from threading import Thread
 import datetime
 import json
+import os
+
+fname = os.path.splitext(os.path.basename(__file__))[0]
 
 class Snoop(Thread):
     """This plugin always runs, but the user is not notified about it."""
@@ -27,6 +30,14 @@ class Snoop(Thread):
         plugs = kwargs.get('plugs')
         now = datetime.datetime.now() #.strftime("%Y-%m-%d %H:%M:%S")
 
+        tmp_p = []
+        for p in json.loads(plugs):
+            name = p['name'][8:]
+            if name != fname:
+               tmp_p.append(name)
+        plugins = ",".join(tmp_p)
+
+        """
         plugs = json.loads(plugs)
         dd=[]
         for p in plugs:
@@ -43,9 +54,9 @@ class Snoop(Thread):
             if name != "run_log":
                 dd.append(rtn)
         plugins = ",".join(dd)
+        """
 
-
-        self.run_session = {"run_id" : self.run_id, "drone" : self.drone, "location" : self.location, "start" : now, "end" : now, 'plugins':plugins }
+        self.run_session = {"runn_id" : self.run_id, "drone" : self.drone, "location" : self.location, "start" : now, "end" : now, 'plugins':plugins, 'sunc':0 }
 
 
     def run(self):
@@ -74,12 +85,13 @@ class Snoop(Thread):
     def get_tables():
         """This function should return a list of table(s)"""
         run = Table('sessions', MetaData(),
-                    Column('run_id', String(length=11), primary_key=True),
+                    Column('runn_id', Integer, primary_key=True),
                     Column('location', String(length=60)),
                     Column('drone', String(length=20)),
                     Column('start', DateTime),
                     Column('end', DateTime),
-                    Column('plugins', String(length=200))
+                    Column('plugins', String(length=200)),
+                    Column('sunc', Integer, default=0)
                     )
 
         return [run]

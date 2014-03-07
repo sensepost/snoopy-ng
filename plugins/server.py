@@ -57,7 +57,7 @@ class Snoop(Thread):
         self.data = deque(maxlen=100000)
 
     def run(self):
-        logging.info("Running wbeserver on '%s:%s'" % (self.ip,self.port))
+        logging.info("Running webserver on '%s:%s'" % (self.ip,self.port))
         webserver.run_webserver(self.port,self.ip,self.db)
 
     def is_ready(self):

@@ -14,27 +14,42 @@ from transformCommon import *
 from base64 import b64decode
 from xml.sax.saxutils import escape
 import re
-logging.basicConfig(level=logging.DEBUG,filename='/tmp/maltego_logs.txt',format='%(asctime)s %(levelname)s: %(message)s',datefmt='%Y-%m-%d %H:%M:%S')
+from wigle_api import Wigle
 
-limit = 100 # Limit the number of SSID addresses returned.
+logging.basicConfig(level=logging.DEBUG,filename='/tmp/maltego_logs.txt',format='%(asctime)s %(levelname)s: %(message)s',datefmt='%Y-%m-%d %H:%M:%S')
+illegal_xml_re = re.compile(u'[\x00-\x08\x0b-\x1f\x7f-\x84\x86-\x9f\ud800-\udfff\ufdd0-\ufddf\ufffe-\uffff]')
 
 def main():
-    filters.append(wigle.c.ssid == ssid)
-    filters.append(wigle.c.overflow == 0)
-    s = select([wigle], and_(*filters)).distinct().limit(limit)
-
-    #s = select([ssids.c.ssid]).where(ssids.c.mac==mac).distinct()
-    r = db.execute(s)
-    results = r.fetchall()
-    logging.debug(results)
+#    print "Content-type: xml\n\n";
+#    MaltegoXML_in = sys.stdin.read()
+#    logging.debug(MaltegoXML_in)
+#    if MaltegoXML_in <> '':
+#     m = MaltegoMsg(MaltegoXML_in)
 
     TRX = MaltegoTransform()
+    TRX.parseArguments(sys.argv)
+    #ssid = TRX.getVar("ssid")
+    logging.debug(ssid)
+    logging.debug(type(ssid))
 
-    illegal_xml_re = re.compile(u'[\x00-\x08\x0b-\x1f\x7f-\x84\x86-\x9f\ud800-\udfff\ufdd0-\ufddf\ufffe-\uffff]')
+    try:
+        f = open("wigle_creds.txt", "r")
+        user, passw, email,proxy = f.readline().strip().split(":")
+    except Exception, e:
+        print "ERROR: Unable to read Wigle user & pass, email (and optional proxy) from wigle_creds.txt"
+        print e
+        exit(-1)
+    wig=Wigle(user, passw, email, proxy)
+    if not wig.login():
+        print "ERROR: Unable to login to Wigle with creds from wigle_creds.txt. Please check them."
+        exit(-1)
+    locations = wig.lookupSSID(ssid)
+    if 'error' in locations:
+        print "ERROR: Unable to query Wigle. Perhaps your IP/user is shunned. Error was '%s'" % locations
+        exit(-1)
 
-
-    for address in results:
-        if len(results) > 20:
+    for address in locations:
+        if len(locations) > 20:
             break
         #ssid = b64decode(ssid)
         #ssid=escape(ssid)
@@ -68,18 +83,8 @@ def main():
         logging.debug(street_view_url1)
         NewEnt.setIconURL(street_view_url1)
 
-
         NewEnt.addDisplayInformation("<a href='%s'>Click for map </a>" % street_view_url2, "Street view")
-        NewEnt.addDisplayInformation("one","two")
 
-    #try:
     TRX.returnOutput()
-    #except Exception,e:
-    #    print "RARRRR"
-    #    print e
-    #    print address
-    #    exit
+
 main()
-#me = MaltegoTransform()
-#me.addEntity("maltego.Phrase","hello bob")
-#me.returnOutput()                

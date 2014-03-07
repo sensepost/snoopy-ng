@@ -22,9 +22,6 @@ class Snarf():
 
         #Process passed parameters
         self.hash_macs = kwargs.get('hash_macs', False)
-        self.drone = kwargs.get('drone',"no_drone_name_supplied")
-        self.run_id = kwargs.get('run_id', "no_run_id_supplied")
-        self.location = kwargs.get('location', "no_location_supplied")
         self.verb = kwargs.get('verbose', 0)
         self.fname = os.path.splitext(os.path.basename(__file__))[0]
 

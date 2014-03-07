@@ -28,8 +28,7 @@ def main():
     
     #filters.append(proxs.c.mac == vends.c.mac) # Replaced with JOIN
     j = proxs.outerjoin(vends, proxs.c.mac == vends.c.mac)
-    s = select([proxs.c.mac,vends.c.vendor, vends.c.vendorLong], and_(*filters)).select_from(j)
-
+    s = select([proxs.c.mac,vends.c.vendor, vends.c.vendorLong], and_(*filters)).select_from(j).distinct()
     #s = select([proxs.c.mac,vends.c.vendor, vends.c.vendorLong], and_(*filters))
 
     if ssid:

@@ -26,6 +26,7 @@ class Snoop(Thread):
         self.successfully_geolocated = deque()
         self.recently_found = deque(maxlen=1000)    #We keep a register of the last 1000, to prevent superfluous lookups before results make it into the db
         self.wig = None #Wigle object
+        self.last_lookup = 0
 
         self.verb = kwargs.get('verbose', 0)
         self.fname = os.path.splitext(os.path.basename(__file__))[0]
@@ -48,11 +49,12 @@ class Snoop(Thread):
         wigle = self.metadata.tables['wigle']
         ssids = self.metadata.tables['ssids']
         now = os.times()[4]
-        if now - self.last_checked > self.CHECK_FREQ:
+        if abs(now - self.last_checked) > self.CHECK_FREQ:
             s = outerjoin(ssids,wigle, ssids.c.ssid==wigle.c.ssid).select(wigle.c.ssid == None)
             r = self.db.execute(s)
             results = r.fetchall()
             new_ssids = [t[1] for t in results] #Second field in each result row
+
             for ssid in new_ssids:
                 if ssid not in self.ssids_to_lookup and ssid != self.current_lookup and ssid not in self.recently_found:
                     if ssid in self.bad_ssids and self.bad_ssids[ssid] > 2:
@@ -61,7 +63,19 @@ class Snoop(Thread):
                         self.ssids_to_lookup.append(ssid)
             self.last_checked = now
             if len(self.ssids_to_lookup) > 0:
-                if self.verb > 0:
+                #Re-order results giving preference to known interesting ones. If 'weighted' is empty,
+                # nothing will happen.
+                #weighted = []
+                weighted = ["SKY", "TALKTALK", "BTH", "BTBusinessHub", "Plusnet", "virginmedia", "Livebox"]
+                for w in weighted:
+                    for r in range(len(self.ssids_to_lookup)):
+                        result = self.ssids_to_lookup[r]
+                        if result.startswith(w):
+                            del self.ssids_to_lookup[r]
+                            self.ssids_to_lookup.appendleft(result)
+
+                if self.verb > 0 and self.last_lookup != len(self.ssids_to_lookup):
+                    self.last_lookup = len(self.ssids_to_lookup)
                     logging.info("Plugin %s%s%s has %s%d%s SSIDs to lookup." % (GR,self.fname,G,GR,len(self.ssids_to_lookup),G))
                 logging.debug("SSID lookup queue has %d SSIDs to query" % len(self.ssids_to_lookup))
 
@@ -75,10 +89,18 @@ class Snoop(Thread):
 
             try:
                 self.current_lookup = self.ssids_to_lookup.popleft()
+                #self.current_lookup = self.current_lookup.decode('utf-8', 'ignore')
+                logging.debug("Looking up %s (%s)" %(self.current_lookup,type(self.current_lookup)))
             except IndexError:
                 pass
             else:
-                locations = self.wig.lookupSSID(self.current_lookup)
+                locations = None
+                try:
+                    locations = self.wig.lookupSSID(self.current_lookup)
+                except Exception, e:
+                    logging.error("Exception whilst querying Wigle: '%s'" % e)
+                    #logging.error("Exception whilst looking up '%s': '%s'" % (self.current_lookup,e))
+                    time.sleep(2)
                 if locations:
                     if 'error' in locations:
                         if 'shun' in locations['error']:
@@ -99,9 +121,12 @@ class Snoop(Thread):
                         for location in locations:
                             self.successfully_geolocated.append( location )
                         if self.verb > 0:
-                            logging.info("Plugin %s%s%s geolocated SSID '%s%s%s' to %s%d%s possible locations." % (GR,self.fname,G,GR,self.current_lookup,G,GR,len(locations),G))
+                            if locations[0]['overflow'] == 0:
+                                logging.info("Plugin %s%s%s geolocated SSID '%s%s%s' to %s%d%s possible locations." % (GR,self.fname,G,GR,self.current_lookup,G,GR,len(locations),G))
+                            else:
+                                logging.debug("Wigle ignoring SSID '%s' (likely >100 locations)" %(self.current_lookup))
 
-            time.sleep(2)
+            #time.sleep(2)
 
     def is_db_ready(self):
         #Wait to ensure tables exist

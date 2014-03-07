@@ -25,7 +25,6 @@ class Snoop(Thread):
 
         # Process arguments passed to module
         self.port = int(kwargs.get('port', 8080))
-        self.run_id = kwargs.get('run_id')
         self.transparent = kwargs.get('transparent', 'false').lower()
         self.verb = kwargs.get('verbose', 0)
         self.fname = os.path.splitext(os.path.basename(__file__))[0]
@@ -70,7 +69,6 @@ class Snoop(Thread):
         toReturn = []
         if data:
             for d in data:
-                d['run_id'] = self.run_id
                 toReturn.append(d)
             return [("web_logs", toReturn)] 
         else:
@@ -82,7 +80,6 @@ class Snoop(Thread):
         """This function should return a list of table(s)"""
 
         table = Table('web_logs',MetaData(),
-                              Column('run_id', Integer(20), primary_key=True),
                               Column('client_ip', String(length=15)),
                               Column('host', String(length=40)),
                               Column('path', String(length=20)),
@@ -91,7 +88,8 @@ class Snoop(Thread):
                               Column('port', String(length=20)),
                               Column('timestamp', String(length=20)),
                               Column('useragnet', String(length=20)),
-                              Column('cookies', String(length=20))
+                              Column('cookies', String(length=20)),        
+                              Column('sunc', Integer, default=0)
                     )
         return [table]
 

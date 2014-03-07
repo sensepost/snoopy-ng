@@ -14,7 +14,7 @@ def run_program(rcmd):
         proc.kill() to kill the process
     """
 
-    logging.info("Recvd command '%s'"%rcmd)
+    logging.debug("Running command '%s'"%rcmd)
     cmd = rcmd.split(' ')
     executable = cmd[0]
     executable_options=cmd[1:]

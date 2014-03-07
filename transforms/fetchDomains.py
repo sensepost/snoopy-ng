@@ -1,6 +1,6 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-# glenn@sensepost.com 
+# glenn@sensepost.com_
 # snoopy_ng // 2013
 # By using this code you agree to abide by the supplied LICENSE.txt
 
@@ -11,6 +11,9 @@ import logging
 from datetime import datetime
 from sqlalchemy import create_engine, MetaData, select, and_
 from transformCommon import *
+from base64 import b64decode
+from xml.sax.saxutils import escape
+import re
 logging.basicConfig(level=logging.DEBUG,filename='/tmp/maltego_logs.txt',format='%(asctime)s %(levelname)s: %(message)s',datefmt='%Y-%m-%d %H:%M:%S')
 
 def main():
@@ -21,23 +24,28 @@ def main():
 #     m = MaltegoMsg(MaltegoXML_in)
 
     #Custom query per transform, but apply filter with and_(*filters) from transformCommon.
-#    s = select([proxs.c.drone], and_(*filters)).distinct()
-    s = select([sess.c.drone], and_(*filters)).distinct()
-    logging.debug(filters)
-    logging.debug(s)
+    filters = []
+    filters.append(cookies.c.client_mac==mac)
+    s = select([cookies.c.baseDomain], and_(*filters))
+    logging.debug(s) 
+    logging.debug(mac)
+    #s = select([ssids.c.ssid]).where(ssids.c.mac==mac).distinct()
     r = db.execute(s)
     results = r.fetchall()
     results = [t[0] for t in results]
     TRX = MaltegoTransform()
 
-    for drone in results:
-        logging.debug(drone)
-        NewEnt=TRX.addEntity("snoopy.Drone", drone)
-        NewEnt.addAdditionalFields("properties.drone","drone", "strict",drone)
-        NewEnt.addAdditionalFields("start_time", "start_time", "strict", start_time)
-        NewEnt.addAdditionalFields("end_time", "end_time", "strict", end_time)
-        #NewEnt.addAdditionalFields("drone", "drone", "strict", drone)
-        #NewEnt.addAdditionalFields("location", "location", "strict", location)
+    illegal_xml_re = re.compile(u'[\x00-\x08\x0b-\x1f\x7f-\x84\x86-\x9f\ud800-\udfff\ufdd0-\ufddf\ufffe-\uffff]')
+
+
+    for domain in results:
+        NewEnt=TRX.addEntity("maltego.Domain", domain)
+        NewEnt.addAdditionalFields("fqdn","Domain", "strict",domain)
+        NewEnt.addAdditionalFields("mac","Client Mac", "strict",mac)
+
     TRX.returnOutput()
 
 main()
+#me = MaltegoTransform()
+#me.addEntity("maltego.Phrase","hello bob")
+#me.returnOutput()                

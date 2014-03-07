@@ -32,7 +32,7 @@ class Snarf():
         table = Table('vendors', MetaData(),
                       Column('mac', String(64), primary_key=True), #Len 64 for sha256
                       Column('vendor', String(20) ),
-                      Column('vendorLong', String(30) ),
+                      Column('vendorLong', String(50) ),
                       Column('sunc', Integer, default=0))
         return [table]
 

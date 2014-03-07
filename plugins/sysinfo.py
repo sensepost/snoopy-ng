@@ -17,7 +17,6 @@ class Snoop(Thread):
         self.RUN = True
         self.last_heartbeat = 0
         self.heartbeat_freq = 60*30 # Check system every n seconds
-        self.drone = kwargs.get('drone',"no_drone_name_supplied")
         self.system_statuses = []
 
         self.verb = kwargs.get('verbose', 0)
@@ -49,17 +48,17 @@ class Snoop(Thread):
         while self.RUN:
             #now = int(time.time())
             now = int(os.times()[4])
-            if now > self.last_heartbeat + self.heartbeat_freq:
+            if abs(now - self.last_heartbeat) > self.heartbeat_freq:
                 logging.debug("Checking system status")
                 self.last_heartbeat = now
                 global_stats = sysinfo.query_system_status()
                 busy_pids = sysinfo.fetch_busy_processes() 
                  
-                global_stats['drone'] = self.drone
+                #global_stats['drone'] = self.drone
                 global_stats['timestamp'] = int(time.time())
     
                 for pid in busy_pids:
-                    pid['drone'] = self.drone
+                    #pid['drone'] = self.drone
                     pid['timestamp'] = now
    
                 if self.verb > 0:
@@ -77,7 +76,7 @@ class Snoop(Thread):
         # Make sure to define your table here. Ensure you have a 'sunc' column:
         metadata = sa.MetaData()
         table_global = sa.Table('sys_global',metadata,
-                              sa.Column('drone', sa.String(length=20), primary_key=True),
+                              #sa.Column('drone', sa.String(length=20), primary_key=True),
                               sa.Column('timestamp', sa.Integer, primary_key=True, autoincrement=False),
                               sa.Column('network_rcvd',sa.Float() ),
                               sa.Column('network_sent',sa.Float() ),
@@ -88,7 +87,7 @@ class Snoop(Thread):
                               sa.Column('sunc', sa.Integer, default=0))
 
         table_bpids = sa.Table('sys_bpids',metadata,
-                              sa.Column('drone', sa.String(length=20), primary_key=True),
+                              #sa.Column('drone', sa.String(length=20), primary_key=True),
                               sa.Column('timestamp', sa.Integer, primary_key=True, autoincrement=False),
                               sa.Column('cpu',sa.Float() ),
                               sa.Column('mem',sa.Float() ),

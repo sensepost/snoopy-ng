@@ -21,12 +21,11 @@ class Snoop(Thread):
         Thread.__init__(self)
         self.RUN = True
         self.data_store = deque(maxlen=1000)
-
+        self.fname = os.path.splitext(os.path.basename(__file__))[0]
         # Process arguments passed to module
         self.var01 = kwargs.get('var01','default01')
         self.var02 = kwargs.get('var02','default02')
         self.verb = kwargs.get('verbose', 0)
-        self.fname = os.path.splitext(os.path.basename(__file__))[0]
 
         self.db = kwargs.get('dbms',None)
         if self.db:
@@ -78,7 +77,8 @@ class Snoop(Thread):
                               Column('time', DateTime, default='' ),
                               Column('rand_num', Integer, default='' ),
                               Column('var01', String(length=20)),
-                              Column('var02', String(length=20)))
+                              Column('var02', String(length=20)),
+                              Column('sunc', Integer, default=0))   #Omit this if you don't want to sync
         return [table]
 
 if __name__ == "__main__":

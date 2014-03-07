@@ -21,12 +21,14 @@ def main():
 #     m = MaltegoMsg(MaltegoXML_in)
 
     #Custom query per transform, but apply filter with and_(*filters) from transformCommon.
-    s = select([proxs.c.location], and_(*filters))
+#    s = select([proxs.c.location], and_(*filters))
+    s = select([sess.c.location], and_(*filters)).distinct()
     r = db.execute(s)
     results = r.fetchall()
-
+  
     for location in results:
         location = location[0]
+        logging.debug(location)
         NewEnt=TRX.addEntity("snoopy.DroneLocation", location)
         #NewEnt.addAdditionalFields("location","location", "strict", location)
         NewEnt.addAdditionalFields("drone","drone", "strict", drone)

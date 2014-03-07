@@ -21,7 +21,10 @@ def main():
 #     m = MaltegoMsg(MaltegoXML_in)
 
     #Custom query per transform, but apply filter with and_(*filters) from transformCommon.
-    s = select([proxs.c.location, proxs.c.drone, proxs.c.first_obs, proxs.c.last_obs], and_(*filters))
+    #s = select([proxs.c.location, proxs.c.drone, proxs.c.first_obs, proxs.c.last_obs], and_(*filters))
+
+    
+    s = select([sess.c.location, sess.c.drone, proxs.c.first_obs, proxs.c.last_obs], and_(*filters))
     r = db.execute(s)
     results = r.fetchall()
 

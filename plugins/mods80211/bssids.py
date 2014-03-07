@@ -50,7 +50,7 @@ class Snarf():
             if (mac, ssid) not in self.device_ssids:
                 self.device_ssids[(mac, ssid)] = 0
                 if self.verb > 0:
-                    logging.info("Sub-plugin %s%s%s observed new Access Point: %s%s%s" % (GR,self.fname,G,GR,mac, G))
+                    logging.info("Sub-plugin %s%s%s observed new Access Point: %s%s%s" % (GR,self.fname,G,GR,ssid, G))
 
     def get_data(self):
         tmp = []

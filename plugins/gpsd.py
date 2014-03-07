@@ -26,9 +26,6 @@ class Snoop(Thread):
         self.data_store = deque(maxlen=1000)
         self.ready = False
         # Process arguments passed to module
-        self.drone = kwargs.get('drone',"no_drone_name_supplied")
-        self.run_id = kwargs.get('run_id', "no_run_id_supplied")
-        self.location = kwargs.get('location', "no_location_supplied")
         self.freq = kwargs.get('freq', 30)
         self.gpsd = None
         self.verb = kwargs.get('verbose', 0)
@@ -112,7 +109,6 @@ class Snoop(Thread):
         """This function should return a list of table(s)"""
 
         table = Table('gpsd',MetaData(),
-                            Column('drone', String(length=20)),
                             Column('timestamp', DateTime, default='' ),
                             Column('gpstimestamp', DateTime, default=''),
                             Column('lat', Float()),
@@ -120,7 +116,8 @@ class Snoop(Thread):
                             Column('speed', Float()),
                             Column('altitude', Float()),
                             Column('epx', Float()),
-                            Column('epy', Float()))
+                            Column('epy', Float()),
+                            Column('sunc', Integer, default=0))
         return [table]
 
 if __name__ == "__main__":

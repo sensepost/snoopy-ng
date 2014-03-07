@@ -11,7 +11,7 @@ import sys
 #import requests # Python 2.7.3rc3 on Maemo cannot use this module
 import urllib2   # In the meantime, we shall use urllib2
 from optparse import OptionParser, OptionGroup, SUPPRESS_HELP
-from sqlalchemy import create_engine, MetaData, Column, String
+from sqlalchemy import create_engine, MetaData, Column, String, Integer
 import base64
 #Server
 import string
@@ -61,7 +61,7 @@ class Snoopy():
         self.drone = drone
         self.location = location
         self.key = key
-        self.run_id = int(random.getrandbits(32))
+        self.run_id = int(random.getrandbits(30) + (1 << 30))
         #self.run_id = ''.join(random.choice(string.ascii_uppercase + string.digits)
         #                      for x in range(10))
         self.flush_local_data_after_sync = flush_local_data_after_sync
@@ -116,7 +116,7 @@ class Snoopy():
             tmp_mod_name = mod_name[8:]
             if mod_name != 'plugins.run_log':
                 logging.info("Waiting for plugin '%s' to indicate it's ready" % tmp_mod_name)
-            while not m.is_ready() and (os.times()[4] - mod_start_time) < self.MODULE_START_GRACE_TIME:
+            while not m.is_ready() and abs(os.times()[4] - mod_start_time) < self.MODULE_START_GRACE_TIME:
                 time.sleep(2)
             if not m.is_ready():
                 logging.info("Plugin '%s' ran out of time to indicate its ready state, moving on to next plugin." % tmp_mod_name)
@@ -133,7 +133,7 @@ class Snoopy():
             self.write_local_db()
             #now = time.time() #Unsafe when ntp is changing time
             now = int(os.times()[4])
-            if now - last_update > self.SYNC_FREQ:
+            if abs(now - last_update) > self.SYNC_FREQ:
                 last_update = now
                 if self.server != "local":
                     self.sync_to_server()
@@ -154,6 +154,9 @@ class Snoopy():
             for rawdata in multidata:
                 if rawdata is not None and rawdata:
                     tbl, data = rawdata
+                    for i in range(len(data)):
+                        if m.getName() != "server" and m.getName() != "local_sync": #Overwriting mother fucking run id
+                            data[i]['run_id'] = self.run_id
                     self.all_data.setdefault(tbl, []).extend(data)
                     if self.verbose > 1 and m.name != 'run_log':
                         logging.info("Plugin '%s%s%s' emitted %s%d%s new datapoints for table '%s%s%s'." %(GR,m.name,G, GR,len(data),G, GR,tbl,G))
@@ -166,6 +169,8 @@ class Snoopy():
                     self.tables[tbl].insert().execute(data)
             except Exception, e:
                 logging.error("Exception whilst trying to insert data, will sleep for 5 seconds then continue. Exception was:\n\n%s%s%s\n\n" % (R,str(e),G))
+                logging.error("Offending table: %s" % tbl)
+                logging.error("Data: %s"  % data)
                 time.sleep(5)
             else:
                 #Clean up local datastore
@@ -300,7 +305,7 @@ before continuing.
         sys.exit(-1)
 
 
-    usage = """Usage: %prog [--plugin <plugin[:params]>] [--server <http://sync_server:[port]> ] [--dbms <database>]\nSee the README file for further information and examples."""
+    usage = """Usage: %prog [--drone <drone_name>] [--location <drone_location>] [--plugin <plugin[:params]>] [--server <http://sync_server:[port]> ] [--dbms <database>]\nSee the README file for further information and examples."""
     parser = OptionParser(usage=usage)
 
     if os.geteuid() != 0:
