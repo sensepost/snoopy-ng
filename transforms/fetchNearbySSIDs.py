@@ -28,8 +28,8 @@ def main():
 
     TRX = MaltegoTransform()
     TRX.parseArguments(sys.argv)
-    lat = TRX.getVar("latitude")
-    lng = TRX.getVar("longitude")
+    lat = float(TRX.getVar("latitude"))
+    lng = float(TRX.getVar("longitude"))
     address = TRX.getVar("longaddress")
 
     logging.debug(lat)

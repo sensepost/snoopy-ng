@@ -68,7 +68,7 @@ class auth:
                 logging.debug("Access denied for %s" % _drone)
                 return False
         except Exception, e:
-            logging.exception('Error: %s' %str(e))
+            logging.error('Unable to query access control database. Have you run snoopy_auth to create an account?')
             return False
     
     def verify_admin(self,user, pwd):

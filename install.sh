@@ -32,6 +32,7 @@ pip install BeautifulSoup
 pip install publicsuffix
 pip install mitmproxy
 pip install pyinotify
+pip install netifaces
 
 # Download & Installs
 echo "[+] Installing pyserial 2.6"
