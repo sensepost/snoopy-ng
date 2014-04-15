@@ -25,12 +25,14 @@ def main():
 
     #Need to implement outer join at some point:
     # s=select([proxs.c.mac]).outerjoin(vends, proxs.c.mac == vends.c.mac) #Outer join
-    
+
+    sl = select([leases.c.mac, leases.c.hostname]).distinct()
+    lease_list = dict ( db.execute(sl).fetchall() )
+ 
     #filters.append(proxs.c.mac == vends.c.mac) # Replaced with JOIN
     j = proxs.outerjoin(vends, proxs.c.mac == vends.c.mac)
     s = select([proxs.c.mac,vends.c.vendor, vends.c.vendorLong], and_(*filters)).select_from(j).distinct()
     #s = select([proxs.c.mac,vends.c.vendor, vends.c.vendorLong], and_(*filters))
-
     if ssid:
         nfilters=[]
         nfilters.append(ssids.c.ssid == ssid)
@@ -44,10 +46,17 @@ def main():
     results = r.fetchall()
     TRX = MaltegoTransform()
     for mac,vendor,vendorLong in results:
-        NewEnt=TRX.addEntity("snoopy.Client", "%s\n(%s)" %(vendor,mac[6:]))
+        hostname = lease_list.get(mac)
+        
+        if hostname:
+            NewEnt=TRX.addEntity("snoopy.Client", "%s\n(%s)" %(vendor,hostname))
+        else:
+            NewEnt=TRX.addEntity("snoopy.Client", "%s\n(%s)" %(vendor,mac[6:]))
         NewEnt.addAdditionalFields("mac","mac address", "strict",mac)
         NewEnt.addAdditionalFields("vendor","vendor", "nostrict", vendor)
         NewEnt.addAdditionalFields("vendorLong","vendorLong", "nostrict", vendorLong)
+        
+
     TRX.returnOutput()
 
 main()

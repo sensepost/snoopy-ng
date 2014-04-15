@@ -34,6 +34,10 @@ pip install mitmproxy
 pip install pyinotify
 pip install netifaces
 
+#Install SP sslstrip
+cp -r ./setup/sslstripSnoopy/ /usr/share/
+ln -s /usr/share/sslstripSnoopy/sslstrip.py /usr/bin/sslstrip_snoopy
+
 # Download & Installs
 echo "[+] Installing pyserial 2.6"
 pip install https://pypi.python.org/packages/source/p/pyserial/pyserial-2.6.tar.gz

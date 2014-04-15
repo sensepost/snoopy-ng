@@ -66,6 +66,9 @@ try:
     wigle = metadata.tables['wigle']
     sess  = metadata.tables['sessions'] 
     cookies = metadata.tables['cookies']
+    leases = metadata.tables['dhcp_leases']
+    sslstrip = metadata.tables['sslstrip']
+    wpa = metadata.tables['wpa_handshakes']
 except Exception, e:
     print "ERROR: Unable to query tables from supplied db (%s)" % dbms
     exit(-1)
