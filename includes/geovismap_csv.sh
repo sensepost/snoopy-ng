@@ -39,7 +39,7 @@ GROUP BY wigle.ssid HAVING COUNT(*) < 6;
 
 EOL
 
-sqlite3 snoopy.db < /tmp/cmds.txt
+sqlite3 $db < /tmp/cmds.txt
 
 sed -i '1s/^/\"name\",\"latitude\",\"longitude\"\n/' $outdir/$name.gps.csv
 
@@ -63,7 +63,7 @@ GROUP BY wigle.ssid HAVING count(*) < 6 ;
 
 EOL
 
-sqlite3 snoopy.db < /tmp/cmds2.txt
+sqlite3 $db < /tmp/cmds2.txt
 
 sed -i '1s/^/\"ssid\",\"address\",\"city\",\"country\"\n/' $outdir/$name.address.csv
 
