@@ -7,6 +7,22 @@ from types import *
 import logging
 import sys
 
+def splitz(str):
+    """Split a string based on space, but hold quotes"""
+    tmp = []
+    st = 0
+    i = str.find('"',st)
+    while i > 0:
+        tmp.extend(str[st:i-1].strip().split(" "))
+        j = str.find('"', i+1)
+        if j < 1:
+            return
+        tmp.append(str[i+1:j])
+        st = j+1
+        i = str.find('"',st)
+    tmp.extend(str[st:].strip().split(" "))
+    return tmp
+
 def run_program(rcmd):
     """
     Runs a program 'executable' with list of paramters 'executable_options'. Returns the process, or None if failed. Use:
@@ -15,7 +31,10 @@ def run_program(rcmd):
     """
 
     logging.debug("Running command '%s'"%rcmd)
-    cmd = rcmd.split(' ')
+    cmd = splitz(rcmd)
+    if not cmd:
+        logging.error("Bad command '%s'" %rcmd)
+        return
     executable = cmd[0]
     executable_options=cmd[1:]
 
