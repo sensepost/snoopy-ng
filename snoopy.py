@@ -13,6 +13,7 @@ import urllib2   # In the meantime, we shall use urllib2
 from optparse import OptionParser, OptionGroup, SUPPRESS_HELP
 from sqlalchemy import create_engine, MetaData, Column, String, Integer
 import base64
+from base64 import decodestring as ds
 #Server
 import string
 import random
@@ -85,9 +86,8 @@ class Snoopy():
             if not self.db.dialect.has_table(self.db.connect(), tbl.name):
                 tbl.create()
 
-        self._load_modules(_modules)
-
         try:
+            self._load_modules(_modules)
             self.go()
         except KeyboardInterrupt:
             print "Caught Ctrl+C! Saving data and shutting down..."
@@ -320,7 +320,7 @@ before continuing.
     parser.add_option("-b", "--dbms", dest="dbms", action="store", type="string", default="sqlite:///snoopy.db", help="Database to use, in SQL Alchemy format. [default: %default]")
     parser.add_option("-m", "--plugin", dest="plugin", action="append", help="Plugin to load. Pass parameters with colon. e.g '-m fishingrod:bait=worm,l=10'. Use -i to list available plugins  and their paramters.")
     parser.add_option("-i", "--list", dest="list", action="store_true", help="List all available plugins and exit.", default=False)
-    parser.add_option("--nyan", action = "store_true", dest = "ny", default = False, help=SUPPRESS_HELP)
+    parser.add_option(ds("LS1ueWFu"), action = "store_true", dest = "ny", default = False, help=SUPPRESS_HELP)
     #parser.add_option("-v", "--verbose", dest="verbose", action="store_true", help="Output information about new data.", default=False)
     parser.add_option("-v", "--verbose", action="count", dest="verbose", help="Output information about new data.", default=0)
     parser.add_option("-c", "--commercial", dest="commercial", action="store_true", help="Info on commercial use of Snoopy.", default=False)
@@ -329,7 +329,7 @@ before continuing.
 
     if options.ny:
         from subprocess import Popen
-        proc  = Popen(([base64.decodestring("dGVsbmV0"), base64.decodestring("bnlhbi5ob3dlcy5uZXQubno=")]))
+        proc  = Popen(([ds("dGVsbmV0"), ds("bnlhbmNhdC5kYWtrby51cw==")]))
         sys.exit(0)
 
     if options.commercial:

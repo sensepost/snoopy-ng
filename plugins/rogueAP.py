@@ -17,7 +17,7 @@ from includes.fonts import *
 from includes.rogee import *
 
 class Snoop(Thread):
-    """This is an example plugin."""
+    """Rogue Access Point."""
     def __init__(self, **kwargs):
         Thread.__init__(self)
         self.RUN = True
@@ -25,25 +25,18 @@ class Snoop(Thread):
         # Process arguments passed to module
         self.verb = kwargs.get('verbose', 0)
         self.fname = os.path.splitext(os.path.basename(__file__))[0]
-        self.do_sslstrip = kwargs.get('sslstrip', False)
-
-        if self.do_sslstrip.lower() == "true":
-            self.do_sslstrip = True
-        else:
-            self.do_sslstrip = False
-
         self.myRogue = rogueAP(**kwargs)
 
     def run(self):
         self.myRogue.run_ap()
         self.myRogue.run_dhcpd()
-        self.myRogue.do_nat(sslstrip=self.do_sslstrip)
-        if self.do_sslstrip:
-            self.myRogue.run_sslstrip()
+        self.myRogue.do_nat()
+
+        time.sleep(2)
+        if not self.myRogue.all_OK():
+            logging.error("Something's gone wrong with the Rogue AP. Probably try restarting things.")
 
         while self.RUN:
-            if not self.myRogue.all_OK():
-                logging.error("Something's gone wrong with the Rogue AP. Probably try restarting things.")
             time.sleep(2)
 
     def is_ready(self):
@@ -71,14 +64,6 @@ class Snoop(Thread):
 
     def get_data(self):
         """Ensure data is returned in the form of a SQL row."""
-#        #e.g of return data - [("tbl_name", [{'var01':99, 'var02':199}]
-#        rtnData=[]
-#        while self.data_store:
-#            rtnData.append(self.data_store.popleft())
-#        if rtnData:
-#            return [("example_table", rtnData)]
-#        else:
-#            return []
         data = self.myRogue.get_new_leases() + self.myRogue.get_ssl_data()
         return data
 

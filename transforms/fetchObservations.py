@@ -23,6 +23,9 @@ def main():
     #Custom query per transform, but apply filter with and_(*filters) from transformCommon.
     #s = select([proxs.c.location, proxs.c.drone, proxs.c.first_obs, proxs.c.last_obs], and_(*filters))
 
+    ft = [ (gps.c.run_id == sess.c.run_id), (gps.c.timestamp >= sess.c.start), (gps.c.timestamp <= sess.c.end ) ]
+    sg = select([gps.c.lat, gps.c.long], and_(*ft))
+    gps_c = db.execute(sg).fetchall()
     
     s = select([sess.c.location, sess.c.drone, proxs.c.first_obs, proxs.c.last_obs], and_(*filters))
     r = db.execute(s)

@@ -27,9 +27,15 @@ def main():
     if TRX.getVar("client_ip"):
         ip = TRX.getVar("client_ip")
 
+    domain = TRX.getVar("domain")
+
+    filters = []
+
     if ip:
-        filters = []
         filters.append( sslstrip.c.client == ip )
+        if domain:
+            filters.append( sslstrip.c.domain == domain)
+        
         s = select([sslstrip.c.key, sslstrip.c.value], and_(*filters)).distinct()
         results = db.execute(s).fetchall()
 
@@ -43,18 +49,21 @@ def main():
 
     #Custom query per transform, but apply filter with and_(*filters) from transformCommon.
     filters = []
+    
     filters.extend( (leases.c.mac == mac, sslstrip.c.client == leases.c.ip))
+
+    if domain:
+        filters.append( sslstrip.c.domain == domain )
     s = select([sslstrip.c.domain, leases.c.mac, leases.c.ip], and_(*filters))
     r = db.execute(s)
     results = r.fetchall()
-    #TRX = MaltegoTransform()
-
+    TRX = MaltegoTransform()
     illegal_xml_re = re.compile(u'[\x00-\x08\x0b-\x1f\x7f-\x84\x86-\x9f\ud800-\udfff\ufdd0-\ufddf\ufffe-\uffff]')
 
     for res in results:
         domain, client_mac, client_ip = res
         NewEnt=TRX.addEntity("snoopy.Site", domain)
-        NewEnt.addAdditionalFields("fqdn","Domain", "strict",domain)
+        NewEnt.addAdditionalFields("domain","domain", "strict",domain)
         NewEnt.addAdditionalFields("mac","Client Mac", "strict",client_mac)
         NewEnt.addAdditionalFields("client_ip","Client IP", "strict",client_ip)
 

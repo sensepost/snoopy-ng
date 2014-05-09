@@ -6,6 +6,7 @@ import re
 from dateutil import parser
 import os
 logging.basicConfig(level=logging.DEBUG,filename='/tmp/maltego_logs.txt',format='%(asctime)s %(levelname)s: %(message)s',datefmt='%Y-%m-%d %H:%M:%S')
+logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO) #Log SQL queries
 
 if not os.path.isdir("/etc/transforms"):
     print "ERROR: '/etc/tranforms' symlink doesn't exist"
@@ -69,9 +70,11 @@ try:
     leases = metadata.tables['dhcp_leases']
     sslstrip = metadata.tables['sslstrip']
     wpa = metadata.tables['wpa_handshakes']
+    gps = metadata.tables['gpsd']
 except Exception, e:
-    print "ERROR: Unable to query tables from supplied db (%s)" % dbms
-    exit(-1)
+    logging.warning("WARNING: Unable to query at least one table from supplied db (%s)" % dbms)
+    logging.warning("Error was %s" %str(e))
+    #exit(-1)
 
 filters = []
 s = select([proxs], and_(*filters))

