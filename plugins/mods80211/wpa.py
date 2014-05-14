@@ -55,4 +55,4 @@ class Snarf():
         while self.handshakes:
             rtnData.append(self.handshakes.popleft())
         if rtnData:
-            return ("wpa_handshakes", rtnData)
+            return [("wpa_handshakes", rtnData)]

@@ -5,32 +5,31 @@ import collections
 import logging
 import re
 from sqlalchemy import MetaData, Table, Column, String, Integer, DateTime
-from includes.common import snoop_hash
+from includes.common import snoop_hash, printFreq
 logging.getLogger("scapy.runtime").setLevel(logging.ERROR)
-from scapy.all import Dot11ProbeReq
+from scapy.all import Dot11ProbeReq, Dot11Elt
 import datetime
 from includes.fonts import *
 import os
+from includes.prox import prox
+from includes.mac_vendor import mac_vendor
+from includes.fifoDict import fifoDict
 
 class Snarf():
     """Calculates proximity observations of devices based on probe-requests emitted."""
 
-    DELTA_PROX = 300
-    """Proximity session duration, before starting a new one."""
-
-    #def __init__(self,hash_macs="False"):
     def __init__(self, **kwargs):
-        self.current_proximity_sessions = {}
-        self.closed_proximity_sessions = collections.deque()
-        self.MOST_RECENT_TIME = 0
-        #self.hash_macs = hash_macs
 
+        self.proxWindow = kwargs.get('proxWindow', 300)
         self.hash_macs = kwargs.get('hash_macs', False)
-        #self.drone = kwargs.get('drone',"no_drone_name_supplied")
-        #self.run_id = kwargs.get('run_id', "no_run_id_supplied")
-        #self.location = kwargs.get('location', "no_location_supplied")
         self.verb = kwargs.get('verbose', 0)
         self.fname = os.path.splitext(os.path.basename(__file__))[0]
+        self.prox = prox(proxWindow=self.proxWindow, identName="mac", pulseName="num_probes", verb=0, callerName=self.fname)
+        self.device_vendor = fifoDict(names=("mac", "vendor", "vendorLong"))
+        self.client_ssids = fifoDict(names=("mac","ssid"))
+
+        self.mv = mac_vendor()    
+        self.lastPrintUpdate = 0
 
     @staticmethod
     def get_tables():
@@ -41,81 +40,56 @@ class Snarf():
                       Column('last_obs', DateTime),
                       Column('num_probes', Integer),
                       Column('sunc', Integer, default=0),
-                      #Column('location', String(length=60)),
-                      #Column('drone', String(length=20), primary_key=True)
                     )
 
-        return [table]
+        table2 = Table('vendors', MetaData(),
+                      Column('mac', String(64), primary_key=True), #Len 64 for sha256
+                      Column('vendor', String(20) ),
+                      Column('vendorLong', String(50) ),
+                      Column('sunc', Integer, default=0))
+
+        table3 = Table('ssids', MetaData(),
+                      Column('mac', String(64), primary_key=True), #Len 64 for sha256
+                      Column('ssid', String(100), primary_key=True, autoincrement=False),
+                      Column('sunc', Integer, default=0))
+
+        return [table, table2, table3]
 
     def proc_packet(self,p):
-        self.MOST_RECENT_TIME = int(p.time)
+        
         if not p.haslayer(Dot11ProbeReq):
             return
+        timeStamp = datetime.datetime.fromtimestamp(int(p.time))
         mac = re.sub(':', '', p.addr2)
+        vendor = self.mv.lookup(mac[:6])
+
         if self.hash_macs == "True":
             mac = snoop_hash(mac)
-        t = int(p.time)
+
         try:
             sig_str = -(256-ord(p.notdecoded[-4:-3])) #TODO: Use signal strength
         except:
             logging.error("Unable to extract signal strength")
-            logging.error(p.summary())
-        # New
-        if mac not in self.current_proximity_sessions:
-            self.current_proximity_sessions[mac] = [t, t, 1, 0]
-            if self.verb > 0:
-                logging.info("Sub-plugin %s%s%s observed new device: %s%s%s" % (GR,self.fname,G,GR,mac, G))
-        else:
-            #Check if expired
-            self.current_proximity_sessions[mac][2] += 1 #num_probes counter
-            first_obs = self.current_proximity_sessions[mac][0]
-            last_obs = self.current_proximity_sessions[mac][1]
-            num_probes = self.current_proximity_sessions[mac][2]
-            if (t - last_obs) >= self.DELTA_PROX:
-                self.closed_proximity_sessions.append((mac, first_obs, last_obs, num_probes)) #Terminate old prox session
-                self.current_proximity_sessions[mac] = [t, t, 1, 0] #Create new prox session
-            else:
-                self.current_proximity_sessions[mac][1] = t
-                self.current_proximity_sessions[mac][3] = 0 #Mark as require db sync
+        
+        self.prox.pulse(mac, timeStamp) #Using packet time instead of system time allows us to read pcaps
+        self.device_vendor.add((mac,vendor[0],vendor[1]))
+
+        if p[Dot11Elt].info != '':
+            ssid = p[Dot11Elt].info.decode('utf-8', 'ignore')
+            if self.verb > 1:
+                logging.info("Sub-plugin %s%s%s noted device %s%s%s (%s%s%s) probing for %s%s%s" % (GR,self.fname,G,GR,mac,G,GR,vendor[0],G,GR,ssid,G))
+            self.client_ssids.add((mac,ssid))
 
     def get_data(self):
         """Ensure data is returned in the form (tableName,[colname:data,colname:data]) """
+        proxSess =  self.prox.getProxs()
+        vendors = self.device_vendor.getNew()
+        ssid_list = self.client_ssids.getNew()
 
-        # First check if expired, if so, move to closed
-        # Use the most recent packet received as a timestamp. This may be more useful than taking
-        #  the system time as we can parse pcaps.
-        todel=[]
-        data=[] 
-        for mac,v in self.current_proximity_sessions.iteritems():
-            first_obs=v[0]
-            last_obs=v[1]
-            num_probes=v[2]
-            t=self.MOST_RECENT_TIME
-            if(t - last_obs >= self.DELTA_PROX):
-                self.closed_proximity_sessions.append((mac,first_obs,t,num_probes))
-                todel.append(mac)
-        for mac in todel:
-            del(self.current_proximity_sessions[mac])
-        #1. Open Prox Sessions
-        tmp_open_prox_sessions=[]  
-        for mac,v in self.current_proximity_sessions.iteritems():
-            first_obs,last_obs,num_probes=v[0],v[1],v[2]
-            first_obs,last_obs = datetime.datetime.fromtimestamp(first_obs), datetime.datetime.fromtimestamp(last_obs)
-            if v[3] == 0:
-                tmp_open_prox_sessions.append({"mac":mac,"first_obs":first_obs,"last_obs":last_obs,"num_probes":num_probes})#, "drone":self.drone, "location":self.location})
-        #2. Closed Prox Sessions
-        tmp_closed_prox_sessions=[] 
-        for i in range(len(self.closed_proximity_sessions)):
-            mac,first_obs,last_obs,num_probes=self.closed_proximity_sessions.popleft()
-            first_obs,last_obs = datetime.datetime.fromtimestamp(first_obs), datetime.datetime.fromtimestamp(last_obs)
-            tmp_closed_prox_sessions.append( {"mac":mac,"first_obs":first_obs,"last_obs":last_obs,"num_probes":num_probes})#, "drone":self.drone, "location":self.location} )
-        if( len(tmp_open_prox_sessions+tmp_closed_prox_sessions) > 0 ):
-            #data.append(   (table,columns,tmp+tmp2)    )
-            #Set flag to indicate data has been fetched:
-            for i in tmp_open_prox_sessions:
-                mac=i['mac']    
-                self.current_proximity_sessions[mac][3]=1 #Mark it has having been retrieved, so we don't resend until it changes
+        if proxSess and self.verb > 0 and abs(os.times()[4] - self.lastPrintUpdate) > printFreq:
+            logging.info("Sub-plugin %s%s%s currently observing %s%d%s client devices" % (GR,self.fname,G,GR,self.prox.getNumProxs(),G))
+            self.lastPrintUpdate = os.times()[4]
 
-            #return None
-            return ("proximity_sessions",tmp_open_prox_sessions+tmp_closed_prox_sessions)
+        data = [("proximity_sessions",proxSess), ("vendors",vendors), ("ssids", ssid_list)]
+        return data
 

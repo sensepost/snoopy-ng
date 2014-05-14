@@ -151,15 +151,17 @@ class Snoopy():
         """Fetch data from all plugins"""
         for m in self.modules:
             multidata = m.get_data()
-            for rawdata in multidata:
-                if rawdata is not None and rawdata:
-                    tbl, data = rawdata
-                    for i in range(len(data)):
-                        if m.getName() != "server" and m.getName() != "local_sync": #Overwriting mother fucking run id
-                            data[i]['run_id'] = self.run_id
-                    self.all_data.setdefault(tbl, []).extend(data)
-                    if self.verbose > 1 and m.name != 'run_log':
-                        logging.info("Plugin '%s%s%s' emitted %s%d%s new datapoints for table '%s%s%s'." %(GR,m.name,G, GR,len(data),G, GR,tbl,G))
+            if multidata:
+                for rawdata in multidata:
+                    if rawdata is not None and rawdata:
+                        tbl, data = rawdata
+                        if data:
+                            for i in range(len(data)):
+                                if m.getName() != "server" and m.getName() != "local_sync": #Overwriting mother fucking run id
+                                    data[i]['run_id'] = self.run_id
+                            self.all_data.setdefault(tbl, []).extend(data)
+                            if self.verbose > 2 and m.name != 'run_log':
+                                logging.info("Plugin '%s%s%s' emitted %s%d%s new datapoints for table '%s%s%s'." %(GR,m.name,G, GR,len(data),G, GR,tbl,G))
 
     def write_local_db(self):
         """Write local db"""

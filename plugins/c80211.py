@@ -167,11 +167,13 @@ class Snoop(Thread):
         #   received packets
         data_to_return = []
         for m in self.modules:
-            data = m.get_data()
-            if data:
-                tblname = data[0]
-                vals = data[1]
-                data_to_return.append((tblname, vals))
+            moduleData = m.get_data()
+            if moduleData:
+                for data in moduleData:
+                    if data:
+                        tblname = data[0]
+                        vals = data[1]
+                        data_to_return.append((tblname, vals))
         return data_to_return
 
 

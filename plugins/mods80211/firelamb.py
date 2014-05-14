@@ -126,4 +126,4 @@ class Snarf():
             for foo in mark:
                 mac, ssid = foo[0], foo[1]
                 self.device_ssids[(mac, ssid)] = 1
-            return ("cookies", tmp)
+            return [("cookies", tmp)]

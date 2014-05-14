@@ -10,6 +10,8 @@ snoopyPath=os.path.dirname(os.path.realpath(__file__))
 os.chdir(snoopyPath)
 os.chdir("..")
 
+printFreq = 20
+
 def get_plugin_names():
     return sorted([ os.path.basename(f)[:-3]
         for f in glob.glob("./plugins/*.py")

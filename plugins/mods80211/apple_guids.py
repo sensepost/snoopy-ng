@@ -71,4 +71,4 @@ class Snarf():
             for foo in todel:
                 mac, guid = foo[0], foo[1]
                 self.apple_guids[(mac, guid)] = 1
-            return ("apple_guids", tmp)
+            return [("apple_guids", tmp)]
