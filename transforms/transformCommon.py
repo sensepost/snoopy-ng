@@ -61,9 +61,9 @@ st_obj = parser.parse(start_time)
 et_obj = parser.parse(end_time)
 
 try:
-    proxs = metadata.tables['proximity_sessions']
+    proxs = metadata.tables['wifi_client_obs']
     vends = metadata.tables['vendors']
-    ssids = metadata.tables['ssids']
+    ssids = metadata.tables['wifi_client_ssids']
     wigle = metadata.tables['wigle']
     sess  = metadata.tables['sessions'] 
     cookies = metadata.tables['cookies']

@@ -91,6 +91,12 @@ class Snoop(Thread):
                               Column('cookies', String(length=20)),        
                               Column('sunc', Integer, default=0)
                     )
+
+        #TODO: Need to pull MAC address out with mitm to incorporate below.
+        table2 = Table('user_agents', MetaData(),
+                        Column('mac', String(64), primary_key=True), #Len 64 for sha256
+                        Column('userAgent', String(128), primary_key=True, autoincrement=False)) #One device may have multiple browsers
+
         return [table]
 
 if __name__ == "__main__":

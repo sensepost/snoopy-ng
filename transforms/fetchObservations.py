@@ -23,10 +23,8 @@ def main():
     #Custom query per transform, but apply filter with and_(*filters) from transformCommon.
     #s = select([proxs.c.location, proxs.c.drone, proxs.c.first_obs, proxs.c.last_obs], and_(*filters))
 
-    ft = [ (gps.c.run_id == sess.c.run_id), (gps.c.timestamp >= sess.c.start), (gps.c.timestamp <= sess.c.end ) ]
-    sg = select([gps.c.lat, gps.c.long], and_(*ft))
-    gps_c = db.execute(sg).fetchall()
-    
+    #ft = [ (gps.c.run_id == sess.c.run_id), (gps.c.systemTime >= sess.c.start), (gps.c.systemTime <= sess.c.end ) ]
+
     s = select([sess.c.location, sess.c.drone, proxs.c.first_obs, proxs.c.last_obs], and_(*filters))
     r = db.execute(s)
     results = r.fetchall()
@@ -36,6 +34,19 @@ def main():
         drone = r[1]
         start_time = r[2].strftime("%Y-%m-%d %H:%M:%S.%f")
         end_time = r[3].strftime("%Y-%m-%d %H:%M:%S.%f")
+
+        # Get GPS positions during the observation period of this session
+        ft = [ (gps.c.run_id == sess.c.run_id), (gps.c.systemTime >= start_time), (gps.c.systemTime <= end_time ) ]
+        sg = select([gps.c.lat, gps.c.lon], and_(*ft))
+        gps_c = db.execute(sg).fetchall()
+
+        if gps_c:
+            firstGPS,lastGPS = (gps_c[0][0], gps_c[0][1]), (gps_c[-1][0], gps_c[-1][1])
+            latVariance = abs(sorted(gps_c)[0][0]-sorted(gps_c)[-1][0])
+            lonVariance = abs(sorted(gps_c)[0][1]-sorted(gps_c)[-1][1])
+            logging.debug(firstGPS)
+            logging.debug(type(firstGPS))
+
 
         td = (r[3] - r[2]).seconds
         if td == 0:
@@ -67,6 +78,12 @@ def main():
         NewEnt.addAdditionalFields("drone","drone", "strict", drone)
         NewEnt.addAdditionalFields("start_time", "start_time", "strict", start_time)
         NewEnt.addAdditionalFields("end_time", "end_time", "strict", end_time)
+        if gps_c:
+            NewEnt.addAdditionalFields("start_gps", "start_gps", "strict", str(firstGPS))
+            NewEnt.addAdditionalFields("end_gps", "end_gps", "strict", str(lastGPS))
+            NewEnt.addAdditionalFields("var_gps", "var_gps", "strict", str(latVariance+lonVariance))
+
+
     TRX.returnOutput()
 
 main()

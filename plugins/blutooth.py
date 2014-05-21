@@ -9,6 +9,7 @@ import os
 from includes.fonts import *
 from includes.prox import prox
 from includes.fifoDict import fifoDict
+from includes.common import snoop_hash, printFreq
 import datetime
 logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s %(levelname)s %(filename)s: %(message)s',
@@ -25,6 +26,7 @@ class Snoop(Thread):
         self.prox = prox(proxWindow=self.proxWindow, identName="mac", verb=0, callerName=self.fname)
         self.vendors = fifoDict(names=("mac", "vendor", "vendorLong"))
         self.btDetails = fifoDict(names=("mac", "name", "classType", "manufac", "lmpVer"))
+        self.lastPrintUpdate = 0
 
     def run(self):
         from includes.bluScan import scan
@@ -72,6 +74,10 @@ class Snoop(Thread):
         proxSess =  self.prox.getProxs()
         btList = self.btDetails.getNew()
         vendorsList = self.vendors.getNew()
+
+        if proxSess and self.verb > 0 and abs(os.times()[4] - self.lastPrintUpdate) > printFreq:
+            logging.info("Sub-plugin %s%s%s currently observing %s%d%s client devices" % (GR,self.fname,G,GR,self.prox.getNumProxs(),G))
+            self.lastPrintUpdate = os.times()[4]
             
         return [("bluetooth_obs", proxSess), ("vendors", vendorsList), ("bluetooth_details", btList)]
     

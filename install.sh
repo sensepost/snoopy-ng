@@ -33,6 +33,7 @@ pip install publicsuffix
 pip install mitmproxy
 pip install pyinotify
 pip install netifaces
+pip install dnslib
 
 #Install SP sslstrip
 cp -r ./setup/sslstripSnoopy/ /usr/share/

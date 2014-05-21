@@ -14,9 +14,9 @@ service ssh start
 sakis3g --sudo connect APN=epc.tmobile.com APN_USER=epc APN_PASS=epc USBINTERFACE="0"  | logger -t sakis_snoopy  &
 
 # Capture local only data
-sudo snoopy -d myDrone -l somePlace -m c80211:mon=True |logger -t logs_snoopy  &
+sudo snoopy -d myDrone -l somePlace -m wifi:mon=True |logger -t logs_snoopy  &
 
 # Or, capture data and sycn to remote server. Set your own paramters, then uncomment.
-# sudo snoopy -d myDrone -l somePlace -m c80211:mon=True -k <KEYKEYKEY> -s http://<server_ip>:9001/ | logger -t logs_snoopy  &
+# sudo snoopy -d myDrone -l somePlace -m wifi:mon=True -k <KEYKEYKEY> -s http://<server_ip>:9001/ | logger -t logs_snoopy  &
 
 exit 0

@@ -16,7 +16,7 @@ from includes.mac_vendor import mac_vendor
 from includes.fifoDict import fifoDict
 
 class Snarf():
-    """Calculates proximity observations of devices based on probe-requests emitted."""
+    """Observe WiFi client devices based on probe-requests emitted."""
 
     def __init__(self, **kwargs):
 
@@ -34,7 +34,7 @@ class Snarf():
     @staticmethod
     def get_tables():
         """Make sure to define your table here"""
-        table = Table('proximity_sessions', MetaData(),
+        table = Table('wifi_client_obs', MetaData(),
                       Column('mac', String(64), primary_key=True), #Len 64 for sha256
                       Column('first_obs', DateTime, primary_key=True, autoincrement=False),
                       Column('last_obs', DateTime),
@@ -48,7 +48,7 @@ class Snarf():
                       Column('vendorLong', String(50) ),
                       Column('sunc', Integer, default=0))
 
-        table3 = Table('ssids', MetaData(),
+        table3 = Table('wifi_client_ssids', MetaData(),
                       Column('mac', String(64), primary_key=True), #Len 64 for sha256
                       Column('ssid', String(100), primary_key=True, autoincrement=False),
                       Column('sunc', Integer, default=0))
@@ -69,16 +69,18 @@ class Snarf():
         try:
             sig_str = -(256-ord(p.notdecoded[-4:-3])) #TODO: Use signal strength
         except:
-            logging.error("Unable to extract signal strength")
-        
+            #logging.error("Unable to extract signal strength")
+            pass 
         self.prox.pulse(mac, timeStamp) #Using packet time instead of system time allows us to read pcaps
         self.device_vendor.add((mac,vendor[0],vendor[1]))
 
         if p[Dot11Elt].info != '':
-            ssid = p[Dot11Elt].info.decode('utf-8', 'ignore')
-            if self.verb > 1:
+            ssid = p[Dot11Elt].info.decode('utf-8')
+            ssid = re.sub("\n", "", ssid)
+            if self.verb > 1 and len(ssid) > 0:
                 logging.info("Sub-plugin %s%s%s noted device %s%s%s (%s%s%s) probing for %s%s%s" % (GR,self.fname,G,GR,mac,G,GR,vendor[0],G,GR,ssid,G))
-            self.client_ssids.add((mac,ssid))
+            if len(ssid) > 0:
+                self.client_ssids.add((mac,ssid))
 
     def get_data(self):
         """Ensure data is returned in the form (tableName,[colname:data,colname:data]) """
@@ -90,6 +92,6 @@ class Snarf():
             logging.info("Sub-plugin %s%s%s currently observing %s%d%s client devices" % (GR,self.fname,G,GR,self.prox.getNumProxs(),G))
             self.lastPrintUpdate = os.times()[4]
 
-        data = [("proximity_sessions",proxSess), ("vendors",vendors), ("ssids", ssid_list)]
+        data = [("wifi_client_obs",proxSess), ("vendors",vendors), ("wifi_client_ssids", ssid_list)]
         return data
 

@@ -47,7 +47,7 @@ class Snoop(Thread):
 
     def querydb(self):
         wigle = self.metadata.tables['wigle']
-        ssids = self.metadata.tables['ssids']
+        ssids = self.metadata.tables['wifi_client_ssids']
         now = os.times()[4]
         if abs(now - self.last_checked) > self.CHECK_FREQ:
             s = outerjoin(ssids,wigle, ssids.c.ssid==wigle.c.ssid).select(wigle.c.ssid == None)
@@ -69,10 +69,14 @@ class Snoop(Thread):
                 weighted = ["SKY", "TALKTALK", "BTH", "BTBusinessHub", "Plusnet", "virginmedia", "Livebox"]
                 for w in weighted:
                     for r in range(len(self.ssids_to_lookup)):
-                        result = self.ssids_to_lookup[r]
-                        if result.startswith(w):
-                            del self.ssids_to_lookup[r]
-                            self.ssids_to_lookup.appendleft(result)
+                        try:
+                            result = self.ssids_to_lookup[r]
+                        except Exception, e:
+                            logging.error("Error prioritizsing SSIDs: '%s'.\nData [%d] was: '%s'\n" %(e,r,str(self.ssids_to_lookup)))
+                        else:
+                            if result.startswith(w):
+                                del self.ssids_to_lookup[r]
+                                self.ssids_to_lookup.appendleft(result)
 
                 if self.verb > 0 and self.last_lookup != len(self.ssids_to_lookup):
                     self.last_lookup = len(self.ssids_to_lookup)
@@ -134,8 +138,9 @@ class Snoop(Thread):
             try:
                 self.metadata.reflect()
                 wigle = self.metadata.tables['wigle']
-                ssids = self.metadata.tables['ssids']
+                ssids = self.metadata.tables['wifi_client_ssids']
             except KeyError:
+                logging.debug("Wigle waiting for tables 'wigle' and 'wifi_client_ssids' to exist")
                 time.sleep(1)
             else:
                 break

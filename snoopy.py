@@ -111,11 +111,12 @@ class Snoopy():
             self.modules.append(m)
 
             #Start modules
-            m.start()
+            #m.start()
             mod_start_time = os.times()[4]    #Get a system clock indepdent timer
             tmp_mod_name = mod_name[8:]
             if mod_name != 'plugins.run_log':
                 logging.info("Waiting for plugin '%s' to indicate it's ready" % tmp_mod_name)
+            m.start()
             while not m.is_ready() and abs(os.times()[4] - mod_start_time) < self.MODULE_START_GRACE_TIME:
                 time.sleep(2)
             if not m.is_ready():

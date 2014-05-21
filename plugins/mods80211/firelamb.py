@@ -16,6 +16,7 @@ from urlparse import urlparse
 import includes.firelamb_helper as helper
 from includes.fonts import *
 import os
+from includes.fifoDict import fifoDict
 
 MAX_NUM_SSIDs = 1000 #Maximum number of mac:ssid pairs to keep in memory
 
@@ -29,6 +30,7 @@ class Snarf():
         self.device_ssids = OrderedDict()
         self.psl = PublicSuffixList()
 
+        self.userAgents = fifoDict(names=("mac","userAgent"))
 
     @staticmethod
     def get_tables():
@@ -49,7 +51,12 @@ class Snarf():
                         Column('isSecure', Integer, default=0),
                         Column('isHttpOnly', Integer, default=0),
                         Column('sunc', Integer, default=0))
-        return [table]
+
+        table2 = Table('user_agents', MetaData(),
+                        Column('mac', String(64), primary_key=True), #Len 64 for sha256
+                        Column('userAgent', String(128), primary_key=True, autoincrement=False)) #One device may have multiple browsers
+
+        return [table, table2]
 
     def proc_packet(self, pkt):
         if pkt.haslayer(TCP) and pkt.haslayer(IP):
@@ -78,6 +85,7 @@ class Snarf():
                         host=''
                     if useragent != None:
                         useragent=''.join(useragent)
+                        self.userAgents.add((ether_src,useragent)) 
                     else:
                         useragnet=''
 
@@ -97,6 +105,9 @@ class Snarf():
                                 logging.info("Sub-plugin %s%s%s observed cookie for domain %s%s (%s)%s" % (GR,self.fname,G,GR,host,ether_src,G))
 
     def get_data(self):
+
+        #Grab useragent:
+        uaList = self.userAgents.getNew()
 
         tmp = []
         mark = []
@@ -126,4 +137,4 @@ class Snarf():
             for foo in mark:
                 mac, ssid = foo[0], foo[1]
                 self.device_ssids[(mac, ssid)] = 1
-            return [("cookies", tmp)]
+            return [("cookies", tmp), ("user_agents", uaList)]

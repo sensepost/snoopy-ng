@@ -13,7 +13,7 @@ def prefilter(p):
             if p[Dot11Elt].info != '':
                 ssid = p[Dot11Elt].info
                 try:
-                    ssid.decode('ascii')
+                    ssid = ssid.decode('utf-8')
                 except:
                     logging.debug("Bad SSID detected: %s" % ssid)
                     return False

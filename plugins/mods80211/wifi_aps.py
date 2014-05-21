@@ -39,14 +39,14 @@ class Snarf():
     @staticmethod
     def get_tables():
         """Make sure to define your table here"""
-        table = Table('APs_obs', MetaData(),
+        table = Table('wifi_AP_obs', MetaData(),
                       Column('mac', String(64), primary_key=True), #Len 64 for sha256
                       Column('first_obs', DateTime, primary_key=True, autoincrement=False),
                       Column('last_obs', DateTime),
                       Column('num_beacons', Integer),
                       Column('sunc', Integer, default=0))
 
-        table2 = Table('APs_ssids', MetaData(),
+        table2 = Table('wifi_AP_ssids', MetaData(),
                       Column('mac', String(64), primary_key=True), #Len 64 for sha256
                       Column('ssid', String(100), primary_key=True, autoincrement=False),
                       Column('sunc', Integer, default=0))
@@ -93,5 +93,5 @@ class Snarf():
             self.lastPrintUpdate = os.times()[4]
 
 
-        data = [("APs_obs", proxSess), ("APs_ssids", ap_names_rtn), ("vendors",vendors)]
+        data = [("wifi_AP_obs", proxSess), ("wifi_AP_ssids", ap_names_rtn), ("vendors",vendors)]
         return data

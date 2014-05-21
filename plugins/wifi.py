@@ -43,7 +43,7 @@ class Snoop(Thread):
             self.enable_monitor_mode = True
 
         Thread.__init__(self)
-        self.setName('c80211')
+        self.setName('wifi')
         self.STOP_SNIFFING = False
 
         self.modules = []
@@ -67,7 +67,6 @@ class Snoop(Thread):
 
     @staticmethod
     def get_parameter_list():
-        #TODO: "<proximity_delta> - time between observataions to group proximity sessions (e.g. -m:c80211:mon0,60")
         sub_plugs = ""
         for m in Snoop.get_modules():
             sub_plug = __import__(m, fromlist=['Snarf']).Snarf
@@ -76,8 +75,8 @@ class Snoop(Thread):
             sub_plugs += "\n\t\t\t  *%s - %s" % (name,desc)
 
         info = {"info" : "This plugin intercepts and processes network traffic. A series of sub-plugins exists within the 'mods' subfolder. Existing sub-plugins are:%s"%sub_plugs,
-                "parameter_list" : [("iface=<dev>", "interface to listen on. e.g. -m c80211:iface=wlan3"),
-                                    ("mon=[True|False]","First enable monitor mode on <iface>. e.g. -m c80211:iface=wlan3,mon=True. If no <iface> specified, will find first appropriate one."),
+                "parameter_list" : [("iface=<dev>", "interface to listen on. e.g. -m iface:iface=mon0"),
+                                    ("mon=[True|False]","First enable monitor mode on <iface>. e.g. -m wifi:iface=mon0,mon=True. If no <iface> specified, will find first appropriate one."),
                                     ]
                 }
         return info

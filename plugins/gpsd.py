@@ -24,62 +24,88 @@ class Snoop(Thread):
         Thread.__init__(self)
         self.RUN = True
         self.data_store = deque(maxlen=1000)
-        self.ready = False
+        self.ready = True
         # Process arguments passed to module
-        self.freq = kwargs.get('freq', 30)
-        self.gpsd = None
+        self.freq = int(kwargs.get('freq', 30))
         self.verb = kwargs.get('verbose', 0)
+        self.lat = kwargs.get('lat')
+        self.long = kwargs.get('long')
         self.fname = os.path.splitext(os.path.basename(__file__))[0]
 
         self.last_lat = 0
         self.last_long = 0
         self.last_alt = 0
 
-    def poll(self):
-        try:
-            if not self.gpsd:
-                self.gpsd = gps(mode=WATCH_ENABLE)
-            self.gpsd.next()
-        except Exception, e:
-            logging.error("Unable to poll gpsd. Is it running? Error was '%s'"%e)
-            return False
+        if self.lat or self.long:
+            try:
+                self.lat = float(self.lat)
+                self.long = float(self.long)
+                logging.info("Plugin %s%s%s using manual GPS co-ordinates: %s(%0.4f,%0.4f)%s. Will plot every %s%d%s seconds." % (GR,self.fname,G,GR,self.lat,self.long,G,GR,self.freq,G))
+            except Exception, e:
+                logging.error("Lat and long parameters should both be present, and be numeric.")
+                exit(-1)
         else:
-            return True
+            try:
+                self.gpsd = gps(mode=WATCH_ENABLE)
+            except Exception, e:
+                logging.error("Unable to query gpsd daemon: '%s'" % e)
+                exit(-1)
 
     def run(self):
+        lastMessage = 0
+        gotGoodFixOnce = False
         while self.RUN:
-            if self.poll():
-                lat,long,alt,speed,epx,epy = self.gpsd.fix.latitude, self.gpsd.fix.longitude, self.gpsd.fix.altitude, self.gpsd.fix.speed, self.gpsd.fix.epx, self.gpsd.fix.epy
-                #gtime = self.gpsd.utc,' + ', self.gpsd.fix.time
-                #if (not isnan(epx) and not isnan(epy)) and (epx < 30 and epy < 30):
-                utc_gpstime = self.gpsd.utc
-                local_gpstime = None
-                if utc_gpstime:
-                    local_gpstime = parser.parse(utc_gpstime).now()
-                if epx < 30 and epy < 30:
-                    self.ready = True
-                    now = datetime.datetime.now()
-                    self.data_store.append({"lat":lat, "long":long, "speed":speed, "altitude":alt, "epx":epx,"epy":epy, "timestamp":now, "gpstimestamp":local_gpstime})
-                    if self.verb > 0:
-                        slat = float("%0.4f" %(lat))
-                        slong = float("%0.4f" %(long))
-                        salt = int(alt)
-                        if slat != self.last_lat or slong != self.last_long or abs(salt - self.last_alt) > 2:
-                            logging.info("Plugin %s%s%s indicated new GPS position: %s(%s,%s) @ %sm%s" % (GR,self.fname,G,GR,slat,slong,salt,G))
-                        self.last_lat, self.last_long, self.last_alt = slat, slong, salt
-                else:
-                    logging.debug("No good signal on GPS yet... (epx=%f, epy=%f)"%(epx,epy))
-                    if self.verb > 0:
-                        logging.warning("Plugin %s%s%s waiting for good GPS fix..." % (GR,self.fname,G) )
-
-                for i in range(self.freq+1):
-                    self.poll()
-                    time.sleep(1)
+            now = datetime.datetime.now()
+            n=float('NaN')
+            res = {'alt':n, 'eps':n, 'ept':n, 'epv':n, 'epx':n, 'epy':n, 'lat':n, 'lon':n, 'time':"1970", 'systemTime':now}
+            if self.lat and self.long:
+                res['lat'] = self.lat
+                res['lon'] = self.long
+                res['time'] = parser.parse(res['time']).now()
+                gotGoodFixOnce = True
+                self.data_store.append(res)
+                if self.verb > 1:
+                     logging.info("Plugin %s%s%s using manual GPS co-ordinates: %s(%0.4f,%0.4f)%s." % (GR,self.fname,G,GR,self.lat,self.long,G))
             else:
-                time.sleep(10)
+                resN = dict(self.gpsd.next())
+                if resN and 'lat' in resN and 'lon' in resN:
+                    for k in resN:
+                        if k in res:
+                            res[k] = resN[k]
+                    if res['time'] != n:
+                        try:
+                            res['time'] = parser.parse(res['time']).now()
+                        except Exception,e:
+                            logging.error(e)
+                    self.data_store.append(res)
+                    gotGoodFixOnce = True
+                    lastMessage = os.times()[4]
+                    if self.verb > 0:
+                        slat = float("%0.4f" %(res.get('lat')))
+                        slong = float("%0.4f" %(res.get('lon')))
+                        salt=-1
+                        if res.get('alt') != n:
+                            salt = int(res.get('alt'))
+                        if slat != self.last_lat or slong != self.last_long or abs(salt - self.last_alt) > 2 and self.verb > 0:
+                            logging.info("Plugin %s%s%s indicated new GPS position: %s(%s,%s) @ %sm%s" % (GR,self.fname,G,GR,slat,slong,salt,G))
+                            self.last_lat, self.last_long, self.last_alt = slat, slong, salt
+                else:
+                    dt = os.times()[4]
+                    if abs( dt - lastMessage) > 30:
+                        logging.debug("No good signal on GPS yet... (%s)"%(str(res)))
+                        if self.verb > 0:
+                            logging.warning("Plugin %s%s%s looking for good GPS fix..." % (GR,self.fname,G) )
+                        lastMessage = dt    
+
+            if self.freq == 0 and gotGoodFixOnce:
+                self.RUN = False
+
+            i = 0
+            while self.RUN and i < self.freq+1:
+                time.sleep(1)
+                i+=1
 
     def is_ready(self):
-        #Perform any functions that must complete before plugin runs
         return self.ready
 
     def stop(self):
@@ -88,7 +114,10 @@ class Snoop(Thread):
     @staticmethod
     def get_parameter_list():
         info = {"info" : "Queries gpsd server for GPS co-ordinates. Ensure the gpsd daemon is running, and on port 2947.",
-                "parameter_list" : [ ("freq=<seconds>","Frequency to poll GPS. Set to 0 to get one fix, and end.") ]
+                "parameter_list" : [ ("freq=<seconds>","Frequency to poll GPS. Set to 0 to get one fix, and end."), 
+                                     ("lat=<LAT>","Manually set GPS latitude"),
+                                     ("long=<LONG>","Manually set GPS longitude")
+                                    ]
                 }
         return info
 
@@ -109,12 +138,12 @@ class Snoop(Thread):
         """This function should return a list of table(s)"""
 
         table = Table('gpsd',MetaData(),
-                            Column('timestamp', DateTime, default='' ),
-                            Column('gpstimestamp', DateTime, default=''),
+                            Column('systemTime', DateTime, default='' ),
+                            Column('time', DateTime, default=''),
                             Column('lat', Float()),
-                            Column('long', Float()),
+                            Column('lon', Float()),
                             Column('speed', Float()),
-                            Column('altitude', Float()),
+                            Column('alt', Float()),
                             Column('epx', Float()),
                             Column('epy', Float()),
                             Column('sunc', Integer, default=0))

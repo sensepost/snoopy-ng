@@ -29,7 +29,7 @@ In a hurry? Try this:
 
 **Save data from wireless, sysinfo, and heartbeat plugins locally:**
 
-    snoopy -v -m c80211:mon=True -m sysinfo -m heartbeat -d myDrone -l London
+    snoopy -v -m wifi:mon=True -m sysinfo -m heartbeat -d myDrone -l London
 
 **Sync data from client to server:**
  
@@ -40,7 +40,7 @@ In a hurry? Try this:
 
 _Client:_
  
-    snoopy -v -m c80211:mon=True -s http://<server>:9001/ -d myDrone -l London -k <key>
+    snoopy -v -m wifi:mon=True -s http://<server>:9001/ -d myDrone -l London -k <key>
 
 1. INTRODUCTION AND OVERVIEW
 =============================
@@ -254,4 +254,4 @@ Extra Notes:
          
 **Client**
 
-		root@client:~# snoopy -m c80211 -m local_sync:server_url=http://1.1.1.1:9001/ -d myDrone -l London -k secretkey -s http://1.1.1.1:9001/
+		root@client:~# snoopy -m wifi -m local_sync:server_url=http://1.1.1.1:9001/ -d myDrone -l London -k secretkey -s http://1.1.1.1:9001/
