@@ -4,6 +4,12 @@
 # Todo: Make this an egg.
 set -e
 
+# In case this is the seconds time user runs setup, remove prior symlinks:
+rm /usr/bin/sslstrip_snoopy
+rm /usr/bin/snoopy
+rm /usr/bin/snoopy_auth
+rm /etc/transforms
+
 apt-get install ntpdate --force-yes --yes
 echo "[+] Setting time with ntp"
 ntpdate ntp.ubuntu.com 
@@ -68,6 +74,8 @@ pip install ./setup/scapy-latest-snoopy_patch.tar.gz
 #fi
 
 echo "[+] Creating symlinks to this folder for snoopy.py."
+
+echo "sqlite:///`pwd`/snoopy.db" > ./transforms/db_path.conf
 
 ln -s `pwd`/transforms /etc/transforms
 ln -s `pwd`/snoopy.py /usr/bin/snoopy

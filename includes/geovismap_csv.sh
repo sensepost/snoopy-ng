@@ -30,10 +30,10 @@ lat || "," || long || "'>" ||
 lat ||","|| long || "'>" ||
 "</a>"
 
-,lat,long FROM ssids,wigle,sessions
+,lat,long FROM wifi_client_ssids,wigle,sessions
 WHERE sessions.location='$name'
-AND ssids.run_id = sessions.run_id
-AND wigle.ssid = ssids.ssid
+AND wifi_client_ssids.run_id = sessions.run_id
+AND wigle.ssid = wifi_client_ssids.ssid
 AND wigle.overflow=0
 GROUP BY wigle.ssid HAVING COUNT(*) < 6;
 
@@ -54,10 +54,10 @@ cat > /tmp/cmds2.txt << EOL
 .mode csv
 
 SELECT wigle.ssid,shortaddress,city,country
-FROM ssids,wigle,sessions
+FROM wifi_client_ssids,wigle,sessions
 WHERE sessions.location='$name'
-AND ssids.run_id = sessions.run_id
-AND wigle.ssid = ssids.ssid
+AND wifi_client_ssids.run_id = sessions.run_id
+AND wigle.ssid = wifi_client_ssids.ssid
 AND wigle.overflow=0
 GROUP BY wigle.ssid HAVING count(*) < 6 ;
 
@@ -77,11 +77,11 @@ echo "Written to $outdir/$name.address.csv"
 #.output $outdir/$name.manufac.csv
 #.mode csv
 
-#SELECT ssids.mac,ssids.ssid
-#FROM ssids,sessions
-#WHERE ssids.run_id=sessions.run_id
+#SELECT wifi_client_ssids.mac,wifi_client_ssids.ssid
+#FROM wifi_client_ssids,sessions
+#WHERE wifi_client_ssids.run_id=sessions.run_id
 #AND sessions.location='$name'
-#GROUP BY ssids.mac;
+#GROUP BY wifi_client_ssids.mac;
 
 #EOL
 
