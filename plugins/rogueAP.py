@@ -56,6 +56,9 @@ class Snoop(Thread):
                                      ("promis=[True|False]","Set promiscuous mode (respond to all probe requests)."),
                                      ("run_dhcp=[True|False]","Run a DHCP server."),
                                      ("local_nat=[True|False]","Run local NAT to route traffic out."),
+                                     ("hostapd=[True|False]","Use hostapd instead of airbase-ng."),
+                                     ("hapdconf=<path>","Specify the hostapd config file to use."),
+                                     ("hapdcmd=<path>","Specify the hostapd binary to use."),
                                      ("sslstrip=[True|False]","Send traffic through Moxie's SSL strip.")
                                     ]
                 }
