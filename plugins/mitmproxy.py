@@ -31,7 +31,7 @@ class Snoop(Thread):
 
         config = proxy.ProxyConfig(
             cacert = os.path.expanduser("~/.mitmproxy/mitmproxy-ca.pem"),
-            transparent_proxy = dict (resolver = platform.resolver(), sslports = [443, 8443])
+            transparent_proxy = dict (showhost=True, resolver = platform.resolver(), sslports = [443, 8443])
         )
 
 
