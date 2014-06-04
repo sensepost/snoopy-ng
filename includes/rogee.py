@@ -273,11 +273,11 @@ dhcp-leasefile=/etc/dhcpd.leases
         #Kill kill kill
         self.notifier.stop()
         run_program("killall airbase-ng")
-		run_program("killall hostapd")
+        run_program("killall hostapd")
         run_program("killall dnsmasq")
         run_program("killall sslstrip")
         run_program("iptables -F")
-		run_program("iptables -F -t nat")
+        run_program("iptables -F -t nat")
         run_program("sysctl -w net.ipv4.ip_forward=0")
         os.remove("/etc/dhcpd.leases")
         os.remove("/tmp/sslstrip.log")
