@@ -31,7 +31,7 @@ class rogueAP:
         self.do_sslstrip = kwargs.get("sslstrip", False)
         self.rogueif = kwargs.get("rogueif", "wlan5")       # Answer all probe requests
         self.hostapd = kwargs.get("hostapd", False)       # Use hostapd instead of airbase-ng
-        self.hapdconf = kwargs.get("hapdconf", "/root/snoopy_ng/includes/hostapd.conf")       # Config file to use for hostapd
+        self.hapdconf = kwargs.get("hapdconf", "/etc/hostapd.conf")       # Config file to use for hostapd
         self.hapdcmd = kwargs.get("hapdcmd", "/root/hostapd/2.1-karmaian/hostapd/hostapd")       # Binary to use for hostapd
 
         self.procs = {} #Var to hold external processes, and ensure they keep running
@@ -81,7 +81,28 @@ class rogueAP:
 
         self.airb_cmd = " ".join(self.airb_cmd)      
         self.set_ip_cmd = "ifconfig "+self.rogueif+" up 10.0.0.1 netmask 255.255.255.0"
-
+        hapd_config_file ="""
+interface="""+self.rogueif+"""
+bssid=00:11:22:33:44:00
+driver=nl80211
+ssid="""+self.ssid+"""
+channel=6
+disassoc_low_ack=0
+auth_algs=3
+ignore_broadcast_ssid=0
+logger_syslog=-1
+logger_stdout=-1
+logger_syslog_level=1
+logger_stdout_level=1
+dump_file=/tmp/hostapd.dump
+ctrl_interface=/var/run/hostapd
+ctrl_interface_group=0
+macaddr_acl=0
+enable_karma=1
+"""
+        f=open('/etc/hostapd.conf', 'w')
+        f.write(hapd_config_file)
+        f.close()
         
         # Vars for DHCP server
         config_file ="""
