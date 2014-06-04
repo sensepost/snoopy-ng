@@ -5,14 +5,25 @@
 set -e
 
 # In case this is the seconds time user runs setup, remove prior symlinks:
-rm /usr/bin/sslstrip_snoopy
-rm /usr/bin/snoopy
-rm /usr/bin/snoopy_auth
-rm /etc/transforms
+function delfil() {
+	if [ -e $1 ]; then
+		rm -r $1
+	fi
+}
+delfil /usr/bin/sslstrip_snoopy
+delfil /usr/bin/snoopy
+delfil /usr/bin/snoopy_auth
+delfil /etc/transforms
 
 apt-get install ntpdate --force-yes --yes
+pgrep ntpd >> /dev/null
+if [ $? == 0 ]; then
+	/etc/init.d/ntp stop
+fi
 echo "[+] Setting time with ntp"
 ntpdate ntp.ubuntu.com 
+/etc/init.d/ntp start
+
 echo "[+] Setting timzeone..."
 echo "Etc/UTC" > /etc/timezone
 dpkg-reconfigure -f noninteractive tzdata
