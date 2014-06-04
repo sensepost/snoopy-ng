@@ -87,7 +87,7 @@ class Snarf():
                         useragent=''.join(useragent)
                         self.userAgents.add((ether_src,useragent)) 
                     else:
-                        useragnet=''
+                        useragent=''
 
                     if address != None:
                         address=''.join(address)

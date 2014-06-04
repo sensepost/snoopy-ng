@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-# glenn@sensepost.com_
-# snoopy_ng // 2013
+# dominic@sensepost.com_
+# snoopy_ng // 2014
 # By using this code you agree to abide by the supplied LICENSE.txt
 
 import sys
@@ -26,7 +26,7 @@ def main():
     #Custom query per transform, but apply filter with and_(*filters) from transformCommon.
     filters = []
     filters.append(weblogs.c.client_ip==ip)
-    s = select([weblogs.c.useragnet], and_(*filters))
+    s = select([weblogs.c.useragent], and_(*filters))
     logging.debug(s) 
     #s = select([ssids.c.ssid]).where(ssids.c.mac==mac).distinct()
     r = db.execute(s)

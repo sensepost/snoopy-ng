@@ -87,7 +87,7 @@ class Snoop(Thread):
                               Column('method', String(length=20)),
                               Column('port', String(length=20)),
                               Column('timestamp', String(length=20)),
-                              Column('useragnet', String(length=20)),
+                              Column('useragent', String(length=20)),
                               Column('cookies', String(length=20)),        
                               Column('sunc', Integer, default=0)
                     )

@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-# glenn@sensepost.com_
-# snoopy_ng // 2013
+# dominic@sensepost.com
+# snoopy_ng // 2014
 # By using this code you agree to abide by the supplied LICENSE.txt
 
 import sys
