@@ -21,17 +21,17 @@ Welcome to Snoopy Version 2.0!
 
 0. Quick Setup
 ==============
-In a hurry? Try this:
+Strapped for time? Try this:
 
-**Setup:**
+**To install and setup Snoopy:**
 
     bash install.sh
 
-**Save data from wireless, sysinfo, and heartbeat plugins locally:**
+**To save data from the wireless, sysinfo, and heartbeat plugins locally:**
 
     snoopy -v -m wifi:mon=True -m sysinfo -m heartbeat -d myDrone -l London
 
-**Sync data from client to server:**
+**To sync data from a client to a server:**
  
  _Server:_
  
@@ -44,11 +44,11 @@ _Client:_
 
 1. INTRODUCTION AND OVERVIEW
 =============================
-Snoopy is a distributed, sensor, data collection, interception, analysis, and visualization framework. It is written in a modular format, allowing for the collection of arbitary data from various sources via the writing of simple Python plugins. 
+Snoopy is a distributed, sensor, data collection, interception, analysis, and visualization framework. It is written in a modular format, allowing for the collection of arbitary data from various sources via Python plugins. 
 
 1. Architecture
 
-    Each Snoopy instance can run multiple plugins simultaneously. Each plugin collects data, which is queried by the main Snoopy process and written to a local database. Snoopy can sync data between clients (drones) and a server, and clients (drones) can also pull replicas of data from a server. Each Snoopy instance can run plugins appropriate for its position in the greater picture. Here's a diagram to depict one possible setup:
+    Each Snoopy instance can run multiple plugins simultaneously. A plugin collects data, which is queried by the main Snoopy process and is written to a local database. Snoopy can sync data between clients (drones) and a server, and clients (drones) can also pull replicas of data from a server. Each Snoopy instance can run plugins appropriate for its position in the greater picture. Here's a diagram to depict one possible setup:
     
         Drone01                     Server01
         +---------------+           +--------------+
@@ -77,39 +77,44 @@ Snoopy is a distributed, sensor, data collection, interception, analysis, and vi
         |               |                                 |   *Maltego   |
         +---------------+                                 +--------------+
 
-    In the above illustration three drones run, and sync their data to two separate servers. One syncs over 3G, the other two over Xbee. The second server syncs its data to a third server. Finally, a client laptop pulls all data from the first and third servers, and runs Maltego to explore the data.
+In the above illustration, there are three drones running and syncing their data to two separate servers. One syncs over 3G, the other two over Xbee. The second server syncs its data to a third server. Finally, a client (laptop) pulls all data from the first and third servers, and runs Maltego to explore the data.
 
 2. Setup & Installation
 
-    The _install.sh_ file will install required packages. It will offer to install aircrack from source which is required for distros without this package (the aircrack suite is used for the wireless plugins). Maltego is highly recommomended for data exploration, a community edition (with some restructions) can be downloaded for free from the Paterva website.
+Running 'sh install.sh' within the snoopy-ng.git directory will install all of the required packages. It offers to install aircrack from source, which is required for distros without this package (the aircrack suite is used for the wireless plugins).We cannot recommend Maltego enough for data exploration, a community edition (with some restrictions) can be downloaded for free from the Paterva website at http://paterva.com.
 
 ---
 
 2. USAGE
 ========
+
 Basic
 -----   
   
-   
-   Help is illustrated and plugins are listed by issuing the commands:
+To see all available flags and options, we have made two commands for you: 
     
-        snoopy --help
-        snoopy --list
+root@touchme:~/Desktop/snoopy-ng.git# snoopy --help
 
-   Plugins can be specified with the --plugin (or shorthand -m) option. Numerous plugins can be specified, and will be started in the order entered. Each plugin will be given 60 seconds to indicate its ready state, after which it times out and the next plugin will be initiated. This can be useful if subsequent plugins depend on actions of prior ones.
+This command gives you all running options, such as which server to sync to, to the name of the drone and its location. In addition, it also introduces how one would run the various plugins. 
+
+root@touchme:~/Desktop/snoopy-ng.git# snoopy --list
+
+This command lists all available plugins and the parameters required by each plugin to function correctly. 
+
+Plugins can be specified with the --plugin (or shorthand -m) option. Numerous plugins can be specified, and will be started in the order entered. Each plugin will be given 60 seconds to indicate its ready state, after which it times out and the next plugin will be initiated. This can be useful if subsequent plugins depend on actions of prior ones.
    
-   Each plugin can take numerous parameters (as indicated in the --list output) in the form of comma separated key value pairs. Below we use the 'example' plugin, which simply generates random numbers.
+Each plugin can take numerous parameters (as indicated in the --list output) in the form of comma separated key value pairs. Below we use the 'example' plugin, which simply generates random numbers.
    
        snoopy --plugin example:x=1,v=True
        
-   If drone / location options are not supplied default values are supplied. Alternatively, they can be specified as below.
+If drone / location options are not supplied default values are supplied. Alternatively, they can be specified as below.
    
        snoopy --plugin example:x=1,v=True --drone myDrone --location Cansas
 
 Data Synchronization
 --------------------
        
-   Data can be synchronized to a remote machine by supplying the --server (-s) option. The remote machine should be running the server plugin (--plugin server). A key should be generated for a drone name before hand. The below illustrates this.
+Data can be synchronized to a remote machine by supplying the --server (-s) option. The remote machine should be running the server plugin (--plugin server). A key should be generated for a drone name before hand. The below illustrates this.
    
    **Server**
 
@@ -131,7 +136,7 @@ Data Synchronization
 
    **Remote Data Pull**
 
-   Data can be pulled from a server using the *local_sync* plugin. For example, assume the server as above is running, and perform this operation from the client:
+Data can be pulled from a server using the *local_sync* plugin. For example, assume the server as above is running, and perform this operation from the client:
    
     root@client:~# snoopy --plugin local_sync:server_url=http://<server_ip>:9001/ --drone myDrone --key GWWVF
     [+] Plugin local_sync pulled 888 records from remote server.
