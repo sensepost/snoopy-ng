@@ -93,6 +93,7 @@ ln -s `pwd`/snoopy.py /usr/bin/snoopy
 ln -s `pwd`/includes/auth_handler.py /usr/bin/snoopy_auth
 chmod +x /usr/bin/snoopy
 chmod +x /usr/bin/snoopy_auth
+chmod +x /usr/bin/sslstrip_snoopy
 
 echo "[+] Done. Try run 'snoopy' or 'snoopy_auth'"
 echo "[I] Ensure you set your ./transforms/db_path.conf path correctly when using Maltego"

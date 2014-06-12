@@ -322,7 +322,7 @@ before continuing.
 
     parser.add_option("-b", "--dbms", dest="dbms", action="store", type="string", default="sqlite:///snoopy.db", help="Database to use, in SQL Alchemy format. [default: %default]")
     parser.add_option("-m", "--plugin", dest="plugin", action="append", help="Plugin to load. Pass parameters with colon. e.g '-m fishingrod:bait=worm,l=10'. Use -i to list available plugins  and their paramters.")
-    parser.add_option("-i", "--list", dest="list", action="store_true", help="List all available plugins and exit.", default=False)
+    parser.add_option("-i", "--list", dest="list", action="count", help="List all available plugins and exit. Use '-ii' or '-iii'  for more information. Include plugin name for specific info, e.g: '-i -m wifi'.", default=0)
     parser.add_option(ds("LS1ueWFu"), action = "store_true", dest = "ny", default = False, help=SUPPRESS_HELP)
     #parser.add_option("-v", "--verbose", dest="verbose", action="store_true", help="Output information about new data.", default=False)
     parser.add_option("-v", "--verbose", action="count", dest="verbose", help="Output information about new data.", default=0)
@@ -351,7 +351,21 @@ you'd like to engage with us.""" % (GR,G)
 
 
     plugins = common.get_plugins()
-    if options.list:
+    if options.list > 0:
+        if options.plugin:
+            names = [str(plug).split(".")[1] for plug in plugins]
+            props = [x.get_parameter_list() for x in plugins]
+            derp = dict(zip(names,props))
+            name = options.plugin[0]
+            show = derp.get(name)
+            if show:
+                print GR + "\tName:" + G + BB + B  + "\t\t%s" %name + NB + G
+                print GR + "\tInfo:" + G + "\t\t%s"  % show.get('info')
+                for p in show.get('parameter_list'):
+                    print GR + "\tParameter:" + G + "\t%s" %p[0]
+                    print G + "\t\t\t ↳ %s" % p[1]
+                 
+            exit(0)
         print "[+] Plugins available:"
         for plug in plugins:
             plugin_info = plug.get_parameter_list()
@@ -359,12 +373,13 @@ you'd like to engage with us.""" % (GR,G)
             name = str(plug).split(".")[1]
             if name != "run_log":
                 print GR + "\tName:" + G + BB + B  + "\t\t%s" %name + NB + G
-                print GR + "\tInfo:" + G + "\t\t%s"  %info 
-                if param_list:
-                    for p in param_list:
-                        print GR + "\tParameter:" + G + "\t%s" %p[0]
-                        print G + "\t\t\t ↳ %s" % p[1]
-                print "\n"
+                if options.list > 1:
+                    print GR + "\tInfo:" + G + "\t\t%s"  %info 
+                    if param_list and options.list > 2:
+                        for p in param_list:
+                            print GR + "\tParameter:" + G + "\t%s" %p[0]
+                            print G + "\t\t\t ↳ %s" % p[1]
+                    print "\n"
         sys.exit(0)
 
     if options.plugin is None and options.sync_server == "local":

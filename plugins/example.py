@@ -36,7 +36,7 @@ class Snoop(Thread):
         while self.RUN:
             new_value = randint(1,52) #Pick a card, any card
             now = datetime.datetime.now()
-            self.data_store.append({'var01':self.var01, 'time':now, 'rand_num':new_value})
+            self.data_store.append({'var01':self.var01, 'var02':self.var02, 'time':now, 'rand_num':new_value, 'sunc':0})
             logging.debug("Added %d" % new_value)
             if self.verb > 0:
                 logging.info("Plugin %s%s%s created new random number: %s%s%s" % (GR,self.fname,G,GR,new_value,G))   

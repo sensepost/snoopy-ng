@@ -24,16 +24,16 @@ def main():
     #db.echo=True
 
     #Need to implement outer join at some point:
-    # s=select([proxs.c.mac]).outerjoin(vends, proxs.c.mac == vends.c.mac) #Outer join
+    # s=select([cookies.c.client_mac]).outerjoin(vends, cookies.c.client_mac == vends.c.mac) #Outer join
 
     sl = select([leases.c.mac, leases.c.hostname]).distinct()
     lease_list = dict ( db.execute(sl).fetchall() )
  
-    #filters.append(proxs.c.mac == vends.c.mac) # Replaced with JOIN
-    j = proxs.outerjoin(vends, proxs.c.mac == vends.c.mac)
-    s = select([proxs.c.mac,vends.c.vendor, vends.c.vendorLong], and_(*filters)).select_from(j).distinct()
+    #filters.append(cookies.c.client_mac == vends.c.mac) # Replaced with JOIN
+    j = cookies.outerjoin(vends, cookies.c.client_mac == vends.c.mac)
+    s = select([cookies.c.client_mac,vends.c.vendor, vends.c.vendorLong], and_(*filters)).select_from(j).distinct()
     logging.debug(s)
-    #s = select([proxs.c.mac,vends.c.vendor, vends.c.vendorLong], and_(*filters))
+    #s = select([cookies.c.client_mac,vends.c.vendor, vends.c.vendorLong], and_(*filters))
     if ssid:
         nfilters=[]
         nfilters.append(ssids.c.ssid == ssid)
@@ -41,7 +41,7 @@ def main():
         s = select([ssids.c.mac,vends.c.vendor, vends.c.vendorLong], and_(*nfilters))
 
     #logging.debug(s)
-    #s = select([proxs.c.mac,vends.c.vendor, vends.c.vendorLong], and_(proxs.c.mac == vends.c.mac, proxs.c.num_probes>1 ) ).distinct()
+    #s = select([cookies.c.client_mac,vends.c.vendor, vends.c.vendorLong], and_(cookies.c.client_mac == vends.c.mac, cookies.c.num_probes>1 ) ).distinct()
 
     cwdF = [cookies.c.run_id == sess.c.run_id]
     cw = select([cookies.c.client_mac], and_(*cwdF))

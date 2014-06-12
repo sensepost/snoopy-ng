@@ -93,13 +93,13 @@ Basic
   
 To see all available flags and options, we have made two commands for you: 
     
-root@touchme:~/Desktop/snoopy-ng.git# snoopy --help
+root@kali:~# snoopy --help (shorthand -h)
 
 This command gives you all running options, such as which server to sync to, to the name of the drone and its location. In addition, it also introduces how one would run the various plugins. 
 
-root@touchme:~/Desktop/snoopy-ng.git# snoopy --list
+root@kali:~# snoopy --list (shorthand -i)
 
-This command lists all available plugins and the parameters required by each plugin to function correctly. 
+This command lists all available plugins and the parameters required by each plugin to function correctly. To get more verbose information about each plugin, use '-ii' or '-iii'. To get information about one specific plugin use '-i -m <pluginName>'.
 
 Plugins can be specified with the --plugin (or shorthand -m) option. Numerous plugins can be specified, and will be started in the order entered. Each plugin will be given 60 seconds to indicate its ready state, after which it times out and the next plugin will be initiated. This can be useful if subsequent plugins depend on actions of prior ones.
    
@@ -229,7 +229,7 @@ Snoopy will run on any Linux device with sufficient support to install files fro
 * BeagleBone Black
 * Powered USB hub (with Y splitter to save on two plugs)
 * Alfa AWUS036h WiFi adapter
-* Huawei E160 Moem
+* Huawei E160 Modem
 * BlueNext BN903S GPS
 * At least a 2A power adapter (will vary on what peripherals you have)
 

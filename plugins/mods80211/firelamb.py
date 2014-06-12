@@ -9,8 +9,8 @@ from scapy.all import Dot11ProbeReq, Dot11Elt, TCP, IP, Raw, Ether, RadioTap
 from base64 import b64encode
 from includes.common import snoop_hash
 from collections import OrderedDict
-
 import time
+import datetime
 from publicsuffix import PublicSuffixList
 from urlparse import urlparse
 import includes.firelamb_helper as helper
@@ -27,9 +27,9 @@ class Snarf():
         self.drone = kwargs.get('drone',"no_drone_name_supplied")
         self.verb = kwargs.get('verbose', 0)
         self.fname = os.path.splitext(os.path.basename(os.path.basename(__file__)))[0]
-        self.device_ssids = OrderedDict()
         self.psl = PublicSuffixList()
 
+        self.cookies = fifoDict(names=("drone", "client_mac", "client_ip", "host", "name", "value", "baseDomain", "address", "lastAccessed", "creationTime"))
         self.userAgents = fifoDict(names=("mac","userAgent"))
 
     @staticmethod
@@ -68,6 +68,7 @@ class Snarf():
                     if pkt.getlayer(Ether):
                         ether_src=pkt.getlayer(Ether).src
                     ether_src = re.sub(':', '', ether_src)
+                    pTime = datetime.datetime.fromtimestamp(int(pkt.time))
 
                     cookie=helper.getcookie(tcpdata)
                     host=helper.gethost(tcpdata)
@@ -77,6 +78,7 @@ class Snarf():
 
                     if cookie != None:
                         cookie=''.join(cookie)
+                        cookie = cookie.decode('utf-8', 'ignore')
                     else:
                         cookie=''
                     if host != None:
@@ -85,9 +87,10 @@ class Snarf():
                         host=''
                     if useragent != None:
                         useragent=''.join(useragent)
+                        useragent = useragent.decode('utf-8', 'ignore')
                         self.userAgents.add((ether_src,useragent)) 
                     else:
-                        useragent=''
+                        useragnet=''
 
                     if address != None:
                         address=''.join(address)
@@ -100,41 +103,14 @@ class Snarf():
                             eq = name_val.find('=')
                             name = name_val[0:eq].strip()
                             val = name_val[eq+1:].strip()
-                            self.device_ssids[(ether_src,ip_src,host,name,val,address,useragent,ip_src)] = 0
+                            self.cookies.add((self.drone,ether_src,ip_src,host,name,val,address,address,pTime,pTime))
                             if self.verb > 0:
                                 logging.info("Sub-plugin %s%s%s observed cookie for domain %s%s (%s)%s" % (GR,self.fname,G,GR,host,ether_src,G))
 
     def get_data(self):
 
-        #Grab useragent:
+        #Grab useragent and cookies:
         uaList = self.userAgents.getNew()
+        cookieList = self.cookies.getNew()
 
-        tmp = []
-        mark = []
-        now = int(time.time())-600
-        for k, v in self.device_ssids.iteritems():
-            if v == 0:
-                mac,ip_src,host,name,value,address,ua,ip = k
-                basedomain = self.psl.get_public_suffix(host)
-                address=urlparse(address).hostname
-                if address == basedomain:
-                    address = "." + address
-
-                tmp.append( {"drone": self.drone, "client_mac": mac, "client_ip":ip_src, "host": host, "name": name, "value": value, "baseDomain" : basedomain, "address": address, "lastAccessed":now, "creationTime":now } )
-                mark.append(k[:4])
-
-        # Reduce mac:ssid data structure if it's getting too large
-        if len(self.device_ssids) > MAX_NUM_SSIDs:
-            logging.debug("MAC:SSID structure is large (%d), going to reduce by 50pc (-%d)" % (len(self.device_ssids),(int(0.5*MAX_NUM_SSIDs))))
-            for i in range(int(0.5 * MAX_NUM_SSIDs)):
-                try:
-                    self.device_ssids.popitem(last = False)
-                except KeyError:
-                    pass
-            logging.debug("MAC:SSID structure is now %d" % len(self.device_ssids))
-
-        if len(mark) > 0:
-            for foo in mark:
-                mac, ssid = foo[0], foo[1]
-                self.device_ssids[(mac, ssid)] = 1
-            return [("cookies", tmp), ("user_agents", uaList)]
+        return [("cookies", cookieList), ("user_agents", uaList)]
