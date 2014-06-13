@@ -35,9 +35,10 @@ class Snoop(Thread):
         self.username = kwargs.get('username')
         self.password = kwargs.get('password')
         self.email = kwargs.get('email')
+        self.proxy = kwargs.get('proxy')
 
         self.db = kwargs.get('dbms',None)
-        self.wig = Wigle(self.username,self.password, self.email)
+        self.wig = Wigle(self.username,self.password, self.email,self.proxy)
 
         self.last_checked = 0
         self.metadata = MetaData(self.db)
@@ -89,8 +90,9 @@ class Snoop(Thread):
         while self.RUN:
             if not self.wig.cookies:
                 if not self.wig.login():
-                    logging.error("Login to Wigle failed!")
-
+                    logging.error("Login to Wigle failed! Aborting wigle plugin.")
+                    self.stop()
+                    break
             try:
                 self.current_lookup = self.ssids_to_lookup.popleft()
                 #self.current_lookup = self.current_lookup.decode('utf-8', 'ignore')
@@ -108,7 +110,7 @@ class Snoop(Thread):
                 if locations:
                     if 'error' in locations:
                         if 'shun' in locations['error']:
-                            logging.info("Wigle account has been shunned, backing off for 20 minutes")
+                            logging.info("Wigle account and/or IP has been shunned, backing off for 20 minutes")
                             self.ssids_to_lookup.append(self.current_lookup)
                             for i in range(60*20):
                                 if not self.RUN:

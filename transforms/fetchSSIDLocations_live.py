@@ -32,16 +32,18 @@ def main():
     logging.debug(ssid)
     logging.debug(type(ssid))
 
-    try:
-        f = open("wigle_creds.txt", "r")
-        user, passw, email,proxy = f.readline().strip().split(":")
-    except Exception, e:
-        print "ERROR: Unable to read Wigle user & pass, email (and optional proxy) from wigle_creds.txt"
-        print e
+    user = TRX.getVar("wigleUser")
+    passw = TRX.getVar("wiglePass")
+    email = TRX.getVar("wigleEmail")
+    proxy = TRX.getVar("wigleProxy")
+
+    if not user or not passw or not email:
+        print "ERROR: Please supply Wigle credentials in the 'Property View' on the right --->"
         exit(-1)
+
     wig=Wigle(user, passw, email, proxy)
     if not wig.login():
-        print "ERROR: Unable to login to Wigle with creds from wigle_creds.txt. Please check them."
+        print "ERROR: Unable to login to Wigle with supplied wigle creds. Please check them."
         exit(-1)
     locations = wig.lookupSSID(ssid)
     if 'error' in locations:

@@ -70,7 +70,7 @@ class Wigle(object):
         payload={'longrange1': '', 'longrange2': '', 'latrange1': '', 'latrange2':'', 'statecode': '', 'Query': '', 'addresscode': '', 'ssid': ssid.replace("_","\_"), 'lastupdt': '', 'netid': '', 'zipcode':'','variance': ''}
 
         results =self.__queryWigle(payload)
-        if results: #and 'error' not in results:
+        if results and 'error' not in results:
             locations=self.__fetch_locations(results,ssid)
             if (locations != None and locations[0]['overflow'] == 0):
                 for l in locations:

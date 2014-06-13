@@ -44,7 +44,7 @@ _Client:_
 
 1. INTRODUCTION AND OVERVIEW
 =============================
-Snoopy is a distributed, sensor, data collection, interception, analysis, and visualization framework. It is written in a modular format, allowing for the collection of arbitary data from various sources via Python plugins. 
+Snoopy is a distributed, sensor, data collection, interception, analysis, and visualization framework. It is written in a modular format, allowing for the collection of arbitrary data from various sources via Python plugins. 
 
 1. Architecture
 

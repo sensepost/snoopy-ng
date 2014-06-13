@@ -51,7 +51,7 @@ class Snoop(Thread):
 
     @staticmethod
     def get_parameter_list():
-        info = {"info" : "Create a rogue access point. - UNDER CONSTRUCTION",
+        info = {"info" : "Create a rogue access point.",
                 "parameter_list" : [ ("ssid=<name>","The SSID of the acces point."),
                                      ("promis=[True|False]","Set promiscuous mode (respond to all probe requests)."),
                                      ("run_dhcp=[True|False]","Run a DHCP server."),
