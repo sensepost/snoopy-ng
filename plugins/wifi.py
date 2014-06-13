@@ -10,11 +10,13 @@ from threading import Thread
 import includes.monitor_mode as mm
 #import includes.LogManager
 logging.getLogger("scapy.runtime").setLevel(logging.ERROR)
-from scapy.all import sniff, Dot11Elt, Dot11ProbeReq, rdpcap, Scapy_Exception
+from scapy.all import sniff, Dot11Elt, Dot11ProbeReq, rdpcap, PcapReader
+from scapy.error import Scapy_Exception
 from collections import deque
 import time
 from plugins.mods80211.prefilter.prefilter import prefilter
 import sys
+from includes.fonts import *
 #logging.basicConfig(level=logging.DEBUG,format='%(asctime)s %(levelname)s %(filename)s: %(message)s',datefmt='%Y-%m-%d %H:%M:%S')
 
 class Snoop(Thread):
@@ -77,6 +79,7 @@ class Snoop(Thread):
         info = {"info" : "This plugin intercepts and processes network traffic. A series of sub-plugins exists within the 'mods' subfolder. Existing sub-plugins are:%s"%sub_plugs,
                 "parameter_list" : [("iface=<dev>", "interface to listen on. e.g. -m iface:iface=mon0"),
                                     ("mon=[True|False]","First enable monitor mode on <iface>. e.g. -m wifi:iface=mon0,mon=True. If no <iface> specified, will find first appropriate one."),
+                                    ("pcap=<pcapFile>","Read data from caputre file instead of an interface.")
                                     ]
                 }
         return info
@@ -88,24 +91,40 @@ class Snoop(Thread):
         self.STOP_SNIFFING = True
 
     def parse_pcap(self):
-        logging.info("Reading in '%s' capture file (slow)..." % self.pcap)
+        logging.info("Plugin %s%s%s parsing '%s%s%s' capture file. Will output info below as usual..." % (GR,self.name,G,GR,self.pcap,G))
+        #data = rdpcap(self.pcap) #Tests indicate this is much slower
+        if not os.path.isfile(self.pcap):
+            logging.error("No such file %s%s%s! Terminating plugin." % (GR,self.pcap,G))
+            exit(-1)
         try:
-            data = rdpcap(self.pcap)
+            r = PcapReader(self.pcap)
         except Exception, e:
-            logging.error("Unable to read in '%s' capture file: '%s'" % (self.pcap, e))
-            logging.error("Did you create '%s' with tcpdump?" % self.pcap)
-            self.stop()
-            sys.exit(-1)
-        else:
-            logging.info("Done reading in '%s'. Processsing..." % self.pcap)
-            for p in data:
-                self.packeteer(p)
-            logging.info("Finished.... I won't re-read this file, so you may want to exit and restart if you populate it again.")
+            if 'Scapy_Exception' in str(e):
+                logging.error("Plugin %s%s%s unable to parse '%s%s%s' capture file. Likely bad format (does not support pcap-ng). Plugin terminating..." % (GR,self.name,G,GR,self.pcap,G))
+            else:
+                logging.error("Plugin %s%s%s unable to parse '%s%s%s' capture file. Plugin terminating. '%s'" % (GR,self.name,G,GR,self.pcap,G,e))
+            self.ready_status = False
+            exit(-1)
 
+        self.ready_status = True
+        goGo = True
+        pCount = 0
+        start = int(os.times()[4])
+        while goGo:
+            try:
+                packet = r.next()
+                pCount += 1
+                self.packeteer(packet)
+            except StopIteration:
+                goGo = False
+        
+        end = int(os.times()[4])
+        duration = end - start
+        time.sleep(3)
+        logging.info("Plugin %s%s%s took %s%d%s seconds to parse %s%d%s packets from '%s%s%s'. Plugin terminating..." % (GR,self.name,G,GR,duration,G,GR,pCount,G,GR,self.pcap,G))
 
     def run(self):
         if self.pcap:
-            self.ready_status = True
             self.parse_pcap()
         else:
 
