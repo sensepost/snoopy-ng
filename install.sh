@@ -11,7 +11,8 @@ rm -f /usr/bin/snoopy_auth
 rm -f /etc/transforms
 
 apt-get install ntpdate --force-yes --yes
-if ps aux | grep ntp | grep -qv grep; then 
+#if ps aux | grep ntp | grep -qv grep; then 
+if [ -f /etc/init.d/ntp ]; then
 	/etc/init.d/ntp stop
 fi
 echo "[+] Setting time with ntp"
