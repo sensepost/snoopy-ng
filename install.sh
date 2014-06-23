@@ -5,19 +5,13 @@
 set -e
 
 # In case this is the seconds time user runs setup, remove prior symlinks:
-function delfil() {
-	if [ -e $1 ]; then
-		rm -r $1
-	fi
-}
-delfil /usr/bin/sslstrip_snoopy
-delfil /usr/bin/snoopy
-delfil /usr/bin/snoopy_auth
-delfil /etc/transforms
+rm -f /usr/bin/sslstrip_snoopy
+rm -f /usr/bin/snoopy
+rm -f /usr/bin/snoopy_auth
+rm -f /etc/transforms
 
 apt-get install ntpdate --force-yes --yes
-pgrep ntpd >> /dev/null
-if [ $? == 0 ]; then
+if ps aux | grep ntp | grep -qv grep; then 
 	/etc/init.d/ntp stop
 fi
 echo "[+] Setting time with ntp"
