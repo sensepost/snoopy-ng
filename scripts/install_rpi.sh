@@ -8,7 +8,7 @@ dpkg-reconfigure openssh-server
 service ssh restart
 
 # Install git
-apt-get update && apt-get install ntp libxml2-dev libxslt-dev pyrit
+apt-get update && apt-get install -y ntp libxml2-dev libxslt-dev pyrit
 
 # Downlaod snoopy-ng from https://github.com/sensepost/snoopy-ng
 git clone https://github.com/sensepost/snoopy-ng.git
