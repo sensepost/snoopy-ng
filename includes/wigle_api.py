@@ -22,7 +22,7 @@ import sys
 requests_log = logging.getLogger("requests")
 requests_log.setLevel(logging.ERROR)
 
-url = {'land':"https://wigle.net/", 'login': "https://wigle.net/gps/gps/main/login", 'query':"https://wigle.net/gps/gps/main/confirmquery/"}
+url = {'land':"https://wigle.net/", 'login': "https://www.wigle.net/api/v1/jsonLogin", 'query':"https://wigle.net/gps/gps/main/confirmquery/"}
 
 class Wigle(object):
 
