@@ -14,6 +14,10 @@ apt-get install ntpdate --force-yes --yes
 #if ps aux | grep ntp | grep -qv grep; then 
 if [ -f /etc/init.d/ntp ]; then
 	/etc/init.d/ntp stop
+else 
+	# Needed for Kali Linux build on Raspberry Pi
+	apt-get install ntp
+	/etc/init.d/ntp stop
 fi
 echo "[+] Setting time with ntp"
 ntpdate ntp.ubuntu.com 
@@ -30,7 +34,7 @@ apt-get update
 
 # Packages
 echo "[+] Installing required packages..."
-apt-get install --force-yes --yes python-setuptools autossh python-psutil python2.7-dev libpcap0.8-dev python-sqlalchemy ppp tcpdump python-serial sqlite3 python-requests iw build-essential python-bluez python-flask python-gps python-dateutil python-dev
+apt-get install --force-yes --yes python-setuptools autossh python-psutil python2.7-dev libpcap0.8-dev python-sqlalchemy ppp tcpdump python-serial sqlite3 python-requests iw build-essential python-bluez python-flask python-gps python-dateutil python-dev libxml2-dev libxslt-dev pyrit
 
 # Python packages
 
