@@ -25,7 +25,8 @@ def main():
 
     #Custom query per transform, but apply filter with and_(*filters) from transformCommon.
     filters = []
-    filters.extend((cookies.c.client_mac==mac, cookies.c.baseDomain==domain))
+    #filters.extend((cookies.c.client_mac==mac, cookies.c.baseDomain==domain)) #Bug: baseDomain being returned as full URL.
+    filters.extend((cookies.c.client_mac==mac, cookies.c.host==domain))
     s = select([cookies.c.name, cookies.c.value], and_(*filters))
     logging.debug(s) 
     #s = select([ssids.c.ssid]).where(ssids.c.mac==mac).distinct()

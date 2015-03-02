@@ -39,7 +39,10 @@ def objs_to_json(_data):
                 f = obj_to_json[ type(value) ]
                 _data['data'][r][name] = f(value)
 
-    return json.dumps(_data)
+    try:
+       return json.dumps(_data)
+    except:
+       print _data
 
 def json_to_objs(_json):
     if not col_type_mapper:

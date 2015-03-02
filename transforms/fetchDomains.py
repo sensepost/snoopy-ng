@@ -26,7 +26,8 @@ def main():
     #Custom query per transform, but apply filter with and_(*filters) from transformCommon.
     filters = []
     filters.append(cookies.c.client_mac==mac)
-    s = select([cookies.c.baseDomain], and_(*filters))
+    #s = select([cookies.c.baseDomain], and_(*filters)) #Bug: baseDomain being returned as full URL.
+    s = select([cookies.c.host], and_(*filters))
     logging.debug(s) 
     logging.debug(mac)
     #s = select([ssids.c.ssid]).where(ssids.c.mac==mac).distinct()
@@ -39,6 +40,7 @@ def main():
 
 
     for domain in results:
+        domain = illegal_xml_re.sub('', domain)
         NewEnt=TRX.addEntity("maltego.Domain", domain)
         NewEnt.addAdditionalFields("fqdn","Domain", "strict",domain)
         NewEnt.addAdditionalFields("mac","Client Mac", "strict",mac)

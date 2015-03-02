@@ -52,15 +52,15 @@ def main():
     TRX = MaltegoTransform()
     for mac,vendor,vendorLong in results:
         hostname = lease_list.get(mac)
-        
+
         if hostname:
             NewEnt=TRX.addEntity("snoopy.Client", "%s\n(%s)" %(vendor,hostname))
         else:
             NewEnt=TRX.addEntity("snoopy.Client", "%s\n(%s)" %(vendor,mac[6:]))
         NewEnt.addAdditionalFields("mac","mac address", "strict",mac)
         NewEnt.addAdditionalFields("vendor","vendor", "nostrict", vendor)
-        NewEnt.addAdditionalFields("vendorLong","vendorLong", "nostrict", vendorLong)
-        
+        #NewEnt.addAdditionalFields("vendorLong","vendorLong", "nostrict", vendorLong)
+        #    ^ Going via a TDS crashes for resutls >1000. Weird? 
 
     TRX.returnOutput()
 

@@ -8,7 +8,7 @@ import time
 import includes.system_info as sysinfo
 import os
 from includes.fonts import *
-
+import datetime
 #logging.basicConfig(level=logging.DEBUG)
 
 class Snoop(Thread):
@@ -16,10 +16,11 @@ class Snoop(Thread):
         Thread.__init__(self)
         self.RUN = True
         self.last_heartbeat = 0
-        self.heartbeat_freq = 60*30 # Check system every n seconds
+        #self.heartbeat_freq = 60*30 # Check system every n seconds
         self.system_statuses = []
 
         self.verb = kwargs.get('verbose', 0)
+        self.heartbeat_freq = int(kwargs.get('freq', 60*30))
         self.fname = os.path.splitext(os.path.basename(__file__))[0]
 
     def is_ready(self):
@@ -45,6 +46,7 @@ class Snoop(Thread):
         return tmp_to_return
 
     def run(self):
+        logging.info("Plugin %s%s%s will check device status every %s%d%s seconds." % (GR,self.fname,G, GR,self.heartbeat_freq,G))
         while self.RUN:
             #now = int(time.time())
             now = int(os.times()[4])
@@ -53,13 +55,14 @@ class Snoop(Thread):
                 self.last_heartbeat = now
                 global_stats = sysinfo.query_system_status()
                 busy_pids = sysinfo.fetch_busy_processes() 
-                 
+             
+                timeStamp = datetime.datetime.now()
                 #global_stats['drone'] = self.drone
-                global_stats['timestamp'] = int(time.time())
+                global_stats['timestamp'] = timeStamp #int(time.time())
     
                 for pid in busy_pids:
                     #pid['drone'] = self.drone
-                    pid['timestamp'] = now
+                    pid['timestamp'] = timeStamp #now
    
                 if self.verb > 0:
                     logging.info("Plugin %s%s%s generated new data." % (GR,self.fname,G))
@@ -77,7 +80,7 @@ class Snoop(Thread):
         metadata = sa.MetaData()
         table_global = sa.Table('sys_global',metadata,
                               #sa.Column('drone', sa.String(length=20), primary_key=True),
-                              sa.Column('timestamp', sa.Integer, primary_key=True, autoincrement=False),
+                              sa.Column('timestamp', sa.DateTime, primary_key=True, autoincrement=False),
                               sa.Column('network_rcvd',sa.Float() ),
                               sa.Column('network_sent',sa.Float() ),
                               sa.Column('uptime',sa.String(15)),

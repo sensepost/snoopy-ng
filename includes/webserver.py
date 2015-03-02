@@ -21,8 +21,10 @@ log.setLevel(logging.ERROR)
 path="/"
 
 app = Flask(__name__)
-auth_ = auth()
+#auth_ = auth()
 server_data = deque(maxlen=100000)
+
+auth_ = None
 
 def write_local_db(rawdata):
     """Write server db"""
@@ -139,6 +141,9 @@ def run_webserver(port=9001,ip="0.0.0.0",_db=None):
     global db
     global tables
     global metadata
+    global auth_
+
+    auth_ = auth(rawdb=_db)
 
     db = _db
     if not _db:

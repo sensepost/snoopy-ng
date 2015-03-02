@@ -30,6 +30,7 @@ class Snoop(Thread):
         self.verb = kwargs.get('verbose', 0)
         self.lat = kwargs.get('lat')
         self.long = kwargs.get('long')
+        self.port = kwargs.get('port', 2947)
         self.fname = os.path.splitext(os.path.basename(__file__))[0]
 
         self.last_lat = 0
@@ -46,7 +47,7 @@ class Snoop(Thread):
                 exit(-1)
         else:
             try:
-                self.gpsd = gps(mode=WATCH_ENABLE)
+                self.gpsd = gps(mode=WATCH_ENABLE, port=self.port)
             except Exception, e:
                 logging.error("Unable to query gpsd daemon: '%s'" % e)
                 exit(-1)
@@ -116,7 +117,8 @@ class Snoop(Thread):
         info = {"info" : "Queries gpsd server for GPS co-ordinates. Ensure the gpsd daemon is running, and on port 2947.",
                 "parameter_list" : [ ("freq=<seconds>","Frequency to poll GPS. Set to 0 to get one fix, and end."), 
                                      ("lat=<LAT>","Manually set GPS latitude"),
-                                     ("long=<LONG>","Manually set GPS longitude")
+                                     ("long=<LONG>","Manually set GPS longitude"),
+                                     ("port=<port>","Port GPSD is running on. Default 2947")
                                     ]
                 }
         return info
