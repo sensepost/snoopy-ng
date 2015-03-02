@@ -22,12 +22,11 @@ class Snarf():
         self.cp = cpyrit.pckttools.PacketParser(new_ap_callback=None, new_auth_callback=self.auth_handler)
 
     def auth_handler(self, auth):
-        tmp_eap = auth[1]
-        if tmp_eap.station.ap.isCompleted():
-            json_eap = {"sta_mac": tmp_eap.station.mac, "ap_mac" : tmp_eap.station.ap.mac, "ssid": tmp_eap.station.ap.essid, "anonce": b64encode(tmp_eap.anonce), "snonce": b64encode(tmp_eap.snonce), "keymic": b64encode(tmp_eap.keymic), "keymic_frame": b64encode(tmp_eap.keymic_frame), "version": tmp_eap.version, "quality": tmp_eap.quality, "spread": tmp_eap.spread}
+        if auth.station.ap.isCompleted():
+            json_eap = {"sta_mac": auth.station.mac, "ap_mac" : auth.station.ap.mac, "ssid": auth.station.ap.essid, "anonce": b64encode(auth.anonce), "snonce": b64encode(auth.snonce), "keymic": b64encode(auth.keymic), "keymic_frame": b64encode(auth.keymic_frame), "version": auth.version, "quality": auth.quality, "spread": auth.spread}
             self.handshakes.append(json_eap)
             if self.verb > 0:
-                logging.info("Sub-plugin %s%s%s captured new handshake for %s%s%s" % (GR,self.fname,G,GR,tmp_eap.station.ap.essid, G))
+                logging.info("Sub-plugin %s%s%s captured new handshake for %s%s%s" % (GR,self.fname,G,GR,auth.station.ap.essid, G))
 
     @staticmethod
     def get_tables():
