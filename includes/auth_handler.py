@@ -161,7 +161,7 @@ if __name__ == "__main__":
         print "[!] No options supplied. Try --help."
     else:
 
-        auth_ = auth('sqlite:////root/snoopy_api/snoopy.db')
+        auth_ = auth('sqlite:////root/snoopy-ng/snoopy.db')
         if args.assoc:
             usr,drn = args.assoc.split(",")
             print "[+] Associating user '%s' to drone '%s'" %(usr,drn)
