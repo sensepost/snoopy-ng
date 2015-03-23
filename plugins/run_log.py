@@ -87,7 +87,7 @@ class Snoop(Thread):
         run = Table('sessions', MetaData(),
                     Column('runn_id', Integer, primary_key=True),
                     Column('location', String(length=60)),
-                    Column('drone', String(length=20)),
+                    Column('drone', String(length=200)),
                     Column('start', DateTime),
                     Column('end', DateTime),
                     Column('plugins', String(length=200)),
