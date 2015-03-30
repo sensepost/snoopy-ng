@@ -46,6 +46,8 @@ class Snoop(Thread):
         # Process arguments passed to module
         self.port = kwargs.get('port',9001)
         self.ip = kwargs.get('ip','0.0.0.0')
+        self.cert = kwargs.get('cert',None)
+        self.cert_key = kwargs.get('cert_key',None)
         self.db = kwargs.get('dbms',None)
 
         self.verb = kwargs.get('verbose', 0)
@@ -58,7 +60,7 @@ class Snoop(Thread):
 
     def run(self):
         logging.info("Running webserver on '%s:%s'" % (self.ip,self.port))
-        webserver.run_webserver(self.port,self.ip,self.db)
+        webserver.run_webserver(self.port,self.ip,self.cert,self.cert_key,self.db)
 
     def is_ready(self):
         #Perform any functions that must complete before plugin runs
@@ -72,6 +74,8 @@ class Snoop(Thread):
     def get_parameter_list():
         info = {"info" : "Runs a server - allowing local data to be synchronized remotely.",
                 "parameter_list" : [("port=<int>","The HTTP port to listen on."),
+                                    ("cert=<path>","The SSL certificate path (implies server will use HTTPS)."),
+                                    ("cert_key=<path>","The certificate key path (implies server will use HTTPS)."),
                                     ("xbee=<int>","The XBee PIN to listen on (see Pro version).")
                                     ]
                 }
