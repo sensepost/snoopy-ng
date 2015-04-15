@@ -33,14 +33,14 @@ drone, location, mac, ssid, domain, observation = (None,)*6
 
 filters = []
 
-mtk = metadata.tables['mtk']
-users = metadata.tables['users']
 sess  = metadata.tables['sessions']
 
 #Hack to know if we're local or TDS
 #Option One, TDS (this should be made into the new TRX):
 if len(sys.argv) < 2:
     from Maltego import *
+    mtk = metadata.tables['mtk']
+    users = metadata.tables['users']
     MaltegoXML_in = sys.stdin.read()
     TRX = MaltegoTransform()
     print "Content-type: xml\n\n"
