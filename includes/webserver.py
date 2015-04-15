@@ -1,7 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+import os
 import logging
 import json
+import time
+
 from OpenSSL import SSL
 from flask import Flask, request, Response, abort
 from functools import wraps
@@ -9,7 +12,6 @@ from sqlalchemy import create_engine, MetaData, Table, Column, String,\
                    select, and_, Integer
 from collections import deque
 from sqlalchemy.exc import *
-import time
 from datetime import datetime
 from auth_handler import auth
 from includes.jsonify import json_to_objs, objs_to_json
@@ -108,7 +110,11 @@ def catch_data():
             logging.error("Unable to parse JSON from '%s'" % request)
             return '{"result":"failure", "reason":"Check server logs"}'
         else:
-            server_data.append((jsdata['table'], jsdata['data']  ))
+            server_type = os.getenv('SNOOPY_SERVER', 'flask')
+            if server_type == 'apache':
+                write_local_db([jsdata])
+            else:
+                server_data.append((jsdata['table'], jsdata['data']))
     else:
         logging.error("Unable to parse JSON from '%s'" % request)
         return '{"result":"failure", "reason":"Check server logs"}'
