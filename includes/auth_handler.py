@@ -177,7 +177,7 @@ if __name__ == "__main__":
             if args.users == "*":
                 args.users = None
             for pair in auth_.list_associations(user=args.users):
-                print "\t%s:%s" %(pair[0],pair[1])
+                print "\t%s:%s" %(pair['user'],pair['sensor'])
 
         if args.create:
             print "[+] Creating new Snoopy server sync account"
