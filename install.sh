@@ -63,7 +63,7 @@ echo "[+] Downloading pylibpcap..."
 pip install http://switch.dl.sourceforge.net/project/pylibpcap/pylibpcap/0.6.4/pylibpcap-0.6.4.tar.gz
 
 echo "[+] Downloading dpkt..."
-pip install http://dpkt.googlecode.com/files/dpkt-1.8.tar.gz
+pip install https://dpkt.googlecode.com/files/dpkt-1.8.tar.gz
 
 echo "[+] Installing patched version of scapy..."
 pip install ./setup/scapy-latest-snoopy_patch.tar.gz
