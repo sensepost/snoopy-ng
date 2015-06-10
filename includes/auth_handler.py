@@ -148,6 +148,10 @@ class auth:
 
 if __name__ == "__main__":
     import argparse
+
+    cwd = os.path.dirname(os.path.realpath(__file__))
+    snoopy_db = "sqlite:///" + cwd[:cwd.rfind("/")] + "/snoopy.db"
+
     parser = argparse.ArgumentParser()
     parser.add_argument("-c","--create", help="Create a new drone account")
     parser.add_argument("-d","--delete", help="Delete an existing drone account")
@@ -155,13 +159,14 @@ if __name__ == "__main__":
     parser.add_argument("-a", "--assoc", help="Associate user to drone (supply <user>,<drone>)")
     parser.add_argument("-r", "--disassoc", help="Dis-associate user and drone (supply <user>,<drone>)")
     parser.add_argument("-u","--users", help="List user/drone associations.", nargs='?', const="*")
+    parser.add_argument("-b", "--dbms", help="Specify Snoopy database in SQLAlchemy format. Default will use snoopy-ng/snoopy.db", default=snoopy_db)
     args = parser.parse_args()
 
     if len(sys.argv) < 2:
         print "[!] No options supplied. Try --help."
     else:
 
-        auth_ = auth('sqlite:////root/snoopy-ng/snoopy.db')
+        auth_ = auth(args.dbms)
         if args.assoc:
             usr,drn = args.assoc.split(",")
             print "[+] Associating user '%s' to drone '%s'" %(usr,drn)
