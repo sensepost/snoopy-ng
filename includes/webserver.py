@@ -24,7 +24,7 @@ log.setLevel(logging.ERROR)
 path="/"
 
 app = Flask(__name__)
-auth_ = auth()
+auth_ = None #auth()
 server_data = deque(maxlen=100000)
 
 def write_local_db(rawdata):
@@ -146,7 +146,9 @@ def run_webserver(port=9001,ip="0.0.0.0",cert=None,key=None,_db=None):
     global db
     global tables
     global metadata
+    global auth_
 
+    auth_ = auth(rawdb=_db)
     db = _db
     if not _db:
         dbms="sqlite:///snoopy.db"
